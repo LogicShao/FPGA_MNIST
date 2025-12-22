@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.venv/
+
+# PyTorch / ML
+*.pth
+model_tools/data/
+model_tools/logs/
+
+# compiled C files
+*.o
+*.elf
+*.map
+*.bin
+*.hex
+*.a
+*.lib
+*.so
+*.d
+*.exe
+
+# Quartus / Intel FPGA generated junk
+db/
+incremental_db/
+output_files/
+simulation/
+*.sof
+*.pof
+*.sram
+*.qws
+*.jdi
+*.done
+*.summary
+
+# IDEs
+.vscode/
+.idea/
