@@ -5,77 +5,77 @@
 #include "io.h"
 #include "altera_avalon_uart_regs.h"
 #include "altera_avalon_pio_regs.h"
-#include "altera_avalon_timer_regs.h" // [ĞÂÔö] ±ØĞë°üº¬¶¨Ê±Æ÷¼Ä´æÆ÷¶¨Òå
+#include "altera_avalon_timer_regs.h" // [æ–°å¢] å¿…é¡»åŒ…å«å®šæ—¶å™¨å¯„å­˜å™¨å®šä¹‰
 
-// ÒıÈëÄ£ĞÍÈ¨ÖØºÍÍÆÀíÂß¼­
+// å¼•å…¥æ¨¡å‹æƒé‡å’Œæ¨ç†é€»è¾‘
 #include "model_weights.h"
 
-// --- Ó²¼şÅäÖÃÇø ---
+// --- ç¡¬ä»¶é…ç½®åŒº ---
 #define LAYER1_SHIFT 8
 
-// ¼ì²é Timer »ùµØÖ· (Èç¹û Qsys Àï½Ğ timer_0£¬system.h Àï¾ÍÊÇ TIMER_0_BASE)
+// æ£€æŸ¥ Timer åŸºåœ°å€ (å¦‚æœ Qsys é‡Œå« timer_0ï¼Œsystem.h é‡Œå°±æ˜¯ TIMER_0_BASE)
 //#ifndef TIMER_0_BASE
-//#error "ÇëÔÚ Qsys ÖĞÌí¼Ó Interval Timer ×é¼ş²¢ÃüÃûÎª timer_0£¬»òÕßÔÚ system.h ÖĞ²éÕÒÕıÈ·µÄ¶¨Ê±Æ÷»ùµØÖ·ºêÃû"
+//#error "è¯·åœ¨ Qsys ä¸­æ·»åŠ  Interval Timer ç»„ä»¶å¹¶å‘½åä¸º timer_0ï¼Œæˆ–è€…åœ¨ system.h ä¸­æŸ¥æ‰¾æ­£ç¡®çš„å®šæ—¶å™¨åŸºåœ°å€å®å"
 //#endif
 
-// --- È«¾Ö±äÁ¿ ---
+// --- å…¨å±€å˜é‡ ---
 int8_t input_buffer[784]; 
 
-// ºê¶¨Òå
+// å®å®šä¹‰
 #define RELU(x) ((x) > 0 ? (x) : 0)
 #define CLAMP_INT8(x) (((x) > 127) ? 127 : (((x) < -128) ? -128 : (int8_t)(x)))
 
 // ==========================================
-// [ĞÂÔö] ¼ÆÊ±Æ÷Çı¶¯º¯Êı
-// Nios II µÄ Timer Í¨³£ÊÇµ¹¼ÆÊıµÄ
+// [æ–°å¢] è®¡æ—¶å™¨é©±åŠ¨å‡½æ•°
+// Nios II çš„ Timer é€šå¸¸æ˜¯å€’è®¡æ•°çš„
 // ==========================================
 
-// ¿ªÊ¼¼ÆÊ±£ºÖØÖÃ¶¨Ê±Æ÷²¢¿ªÊ¼µ¹Êı
+// å¼€å§‹è®¡æ—¶ï¼šé‡ç½®å®šæ—¶å™¨å¹¶å¼€å§‹å€’æ•°
 void timer_start() {
-    // 1. Í£Ö¹¶¨Ê±Æ÷£¬Çå³ı×´Ì¬
+    // 1. åœæ­¢å®šæ—¶å™¨ï¼Œæ¸…é™¤çŠ¶æ€
     IOWR_ALTERA_AVALON_TIMER_CONTROL(TIMER_0_BASE, 0);
     IOWR_ALTERA_AVALON_TIMER_STATUS(TIMER_0_BASE, 0);
 
-    // 2. ÉèÖÃÖÜÆÚÎª×î´óÖµ (0xFFFFFFFF)
-    // ÕâÑù¿ÉÒÔ±£Ö¤ºÜ³¤Ê±¼ä²»Òç³ö
+    // 2. è®¾ç½®å‘¨æœŸä¸ºæœ€å¤§å€¼ (0xFFFFFFFF)
+    // è¿™æ ·å¯ä»¥ä¿è¯å¾ˆé•¿æ—¶é—´ä¸æº¢å‡º
     IOWR_ALTERA_AVALON_TIMER_PERIODL(TIMER_0_BASE, 0xFFFF);
     IOWR_ALTERA_AVALON_TIMER_PERIODH(TIMER_0_BASE, 0xFFFF);
 
-    // 3. Æô¶¯¶¨Ê±Æ÷ (STARTÎ» + CONTÎ»Á¬ĞøÔËĞĞ)
+    // 3. å¯åŠ¨å®šæ—¶å™¨ (STARTä½ + CONTä½è¿ç»­è¿è¡Œ)
     IOWR_ALTERA_AVALON_TIMER_CONTROL(TIMER_0_BASE,
         ALTERA_AVALON_TIMER_CONTROL_START_MSK |
         ALTERA_AVALON_TIMER_CONTROL_CONT_MSK);
 }
 
-// Í£Ö¹¼ÆÊ±²¢·µ»ØÏûºÄµÄÊ±ÖÓÖÜÆÚÊı (Ticks)
+// åœæ­¢è®¡æ—¶å¹¶è¿”å›æ¶ˆè€—çš„æ—¶é’Ÿå‘¨æœŸæ•° (Ticks)
 uint32_t timer_stop() {
-    // 1. ´¥·¢¿ìÕÕ (Ğ´ÈÎÒâÖµµ½ SNAPL)
-    // ÕâÒ»²½»á½«µ±Ç°µÄ¼ÆÊıÖµËø´æµ½ SNAPL ºÍ SNAPH ÖĞ
+    // 1. è§¦å‘å¿«ç…§ (å†™ä»»æ„å€¼åˆ° SNAPL)
+    // è¿™ä¸€æ­¥ä¼šå°†å½“å‰çš„è®¡æ•°å€¼é”å­˜åˆ° SNAPL å’Œ SNAPH ä¸­
     IOWR_ALTERA_AVALON_TIMER_SNAPL(TIMER_0_BASE, 0);
 
-    // 2. ¶ÁÈ¡¿ìÕÕÖµ
+    // 2. è¯»å–å¿«ç…§å€¼
     uint32_t snap_lo = IORD_ALTERA_AVALON_TIMER_SNAPL(TIMER_0_BASE);
     uint32_t snap_hi = IORD_ALTERA_AVALON_TIMER_SNAPH(TIMER_0_BASE);
     uint32_t current_value = (snap_hi << 16) | snap_lo;
 
-    // 3. ¼ÆËã¾­¹ıµÄ Ticks
-    // ÒòÎªÊÇµ¹¼ÆÊı£¬ËùÒÔÏûºÄµÄÊ±¼ä = ×î´óÖµ - µ±Ç°Öµ
+    // 3. è®¡ç®—ç»è¿‡çš„ Ticks
+    // å› ä¸ºæ˜¯å€’è®¡æ•°ï¼Œæ‰€ä»¥æ¶ˆè€—çš„æ—¶é—´ = æœ€å¤§å€¼ - å½“å‰å€¼
     return 0xFFFFFFFF - current_value;
 }
 
-// ½« Ticks ×ª»»ÎªºÁÃë (¸ù¾İÏµÍ³Ê±ÖÓÆµÂÊ)
+// å°† Ticks è½¬æ¢ä¸ºæ¯«ç§’ (æ ¹æ®ç³»ç»Ÿæ—¶é’Ÿé¢‘ç‡)
 float ticks_to_ms(uint32_t ticks) {
-    // ALT_CPU_FREQ ÊÇ system.h ÖĞ¶¨ÒåµÄ CPU ÆµÂÊ (ÀıÈç 50000000 ´ú±í 50MHz)
+    // ALT_CPU_FREQ æ˜¯ system.h ä¸­å®šä¹‰çš„ CPU é¢‘ç‡ (ä¾‹å¦‚ 50000000 ä»£è¡¨ 50MHz)
     return (float)ticks * 1000.0f / (float)ALT_CPU_FREQ;
 }
 
 // ==========================================
-// 1. ÊıÂë¹ÜÇı¶¯º¯Êı
+// 1. æ•°ç ç®¡é©±åŠ¨å‡½æ•°
 // ==========================================
 void seg_display(int number) {
-    int point = 0;       // ²»ÏÔÊ¾Ğ¡Êıµã
-    int seg_en = 1;      // ¿ªÆôÏÔÊ¾
-    int sign = 0;        // ²»ÏÔÊ¾¸ººÅ
+    int point = 0;       // ä¸æ˜¾ç¤ºå°æ•°ç‚¹
+    int seg_en = 1;      // å¼€å¯æ˜¾ç¤º
+    int sign = 0;        // ä¸æ˜¾ç¤ºè´Ÿå·
 
     uint32_t pio_val = 0;
     pio_val |= (number & 0xFFFFF);
@@ -87,7 +87,7 @@ void seg_display(int number) {
 }
 
 // ==========================================
-// 2. ´®¿ÚÓëÍÆÀí
+// 2. ä¸²å£ä¸æ¨ç†
 // ==========================================
 
 void uart_send_byte(uint8_t data) {
@@ -102,7 +102,7 @@ uint8_t uart_receive_byte() {
 
 void wait_for_image() {
     int i;
-    printf("µÈ´ı PC ·¢ËÍÍ¼Æ¬...\n");
+    printf("ç­‰å¾… PC å‘é€å›¾ç‰‡...\n");
     while (1) {
         if (uart_receive_byte() == 0xAA) break;
     }
@@ -110,7 +110,7 @@ void wait_for_image() {
         input_buffer[i] = (int8_t)uart_receive_byte();
     }
     if (uart_receive_byte() == 0x55) {
-        printf("½ÓÊÕ³É¹¦!\n");
+        printf("æ¥æ”¶æˆåŠŸ!\n");
         uart_send_byte('K');
     }
 }
@@ -155,40 +155,40 @@ int inference(const int8_t *input_pixels) {
 }
 
 // ==========================================
-// 3. Ö÷º¯Êı
+// 3. ä¸»å‡½æ•°
 // ==========================================
 int main() {
     printf("=== FPGA MNIST + Timer Stats ===\n");
-    printf("CPU Freq: %d MHz\n", ALT_CPU_FREQ / 1000000); // ´òÓ¡¼ì²âµ½µÄÆµÂÊ
+    printf("CPU Freq: %d MHz\n", ALT_CPU_FREQ / 1000000); // æ‰“å°æ£€æµ‹åˆ°çš„é¢‘ç‡
 
     seg_display(0);
 
     while (1) {
-        // 1. µÈ´ıÍ¼Æ¬
+        // 1. ç­‰å¾…å›¾ç‰‡
         wait_for_image();
 
-        // 2. ¿ªÊ¼¼ÆÊ±
+        // 2. å¼€å§‹è®¡æ—¶
         timer_start();
 
-        // 3. ÍÆÀí
+        // 3. æ¨ç†
         int prediction = inference(input_buffer);
 
-        // 4. Í£Ö¹¼ÆÊ±²¢¼ÆËã
+        // 4. åœæ­¢è®¡æ—¶å¹¶è®¡ç®—
         uint32_t ticks = timer_stop();
         float time_ms = ticks_to_ms(ticks);
 
-        // 5. ´òÓ¡½á¹û
-        // ÎªÁË¼æÈİ Small C Library (²»Ö§³Ö %f), ÎÒÃÇ°Ñ¸¡µã²ğ³ÉÕûÊıºÍĞ¡Êı´òÓ¡
-        // »òÕßÖ±½Ó´òÓ¡ Ticks
+        // 5. æ‰“å°ç»“æœ
+        // ä¸ºäº†å…¼å®¹ Small C Library (ä¸æ”¯æŒ %f), æˆ‘ä»¬æŠŠæµ®ç‚¹æ‹†æˆæ•´æ•°å’Œå°æ•°æ‰“å°
+        // æˆ–è€…ç›´æ¥æ‰“å° Ticks
         int ms_int = (int)time_ms;
         int ms_frac = (int)((time_ms - ms_int) * 1000);
 
         printf("\n-----------------------------\n");
-        printf(">>> Ô¤²â½á¹û: %d <<<\n", prediction);
-        printf(">>> ÍÆÀíºÄÊ±: %d.%03d ms (%lu Ticks)\n", ms_int, ms_frac, ticks);
+        printf(">>> é¢„æµ‹ç»“æœ: %d <<<\n", prediction);
+        printf(">>> æ¨ç†è€—æ—¶: %d.%03d ms (%lu Ticks)\n", ms_int, ms_frac, ticks);
         printf("-----------------------------\n\n");
 
-        // 6. ÊıÂë¹ÜÏÔÊ¾
+        // 6. æ•°ç ç®¡æ˜¾ç¤º
         seg_display(prediction);
     }
 
