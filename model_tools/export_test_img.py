@@ -23,24 +23,12 @@ def export_image_header(output_path):
     print(f"Exporting image idx {idx}, label: {label}")
 
     # Generate C header content
-    content = "#ifndef TEST_IMAGE_H
-#define TEST_IMAGE_H
-
-"
-    content += "#include <stdint.h>
-
-"
-    content += f"static const int TEST_IMAGE_LABEL = {label};
-
-"
-    content += "static const int8_t test_image[784] = {
-    "
+    content = "#ifndef TEST_IMAGE_H\n#define TEST_IMAGE_H\n\n"
+    content += "#include <stdint.h>\n\n"
+    content += f"static const int TEST_IMAGE_LABEL = {label};\n\n"
+    content += "static const int8_t test_image[784] = {\n    "
     content += ", ".join(map(str, flat_img))
-    content += "
-};
-
-#endif
-"
+    content += "\n};\n\n#endif\n"
 
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
     with open(output_path, "w") as f:
