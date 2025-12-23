@@ -28,6 +28,8 @@ model_tools/data/
 *.dep
 /hardware/quartus_proj/**
 /hardware/quartus_proj/
+/hardware/quartus_prj/**
+/hardware/quartus_prj/
 
 # 忽略 BSP (通常不需要提交，因为可以由 sopcinfo 重新生成)
 # 如果你修改了驱动源码，则需要注释掉下面这行
@@ -38,3 +40,9 @@ hardware/software/
 *.log
 *.tmp
 *.bak~
+
+model_tools/logs/
+*.pth
+__pycache__/
+*.exe
+*.bin
