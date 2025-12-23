@@ -15,7 +15,7 @@ except ImportError:
     print("Warning: tqdm not installed. Install with: pip install tqdm")
 
 # 配置
-BATCH_SIZE = 64
+BATCH_SIZE = 1024
 EPOCHS = 3
 HIDDEN_SIZE = 32  # 隐层节点数，FPGA资源有限，32或16比较合适
 MODEL_PATH = "./mnist_model.pth"  # 模型保存路径
@@ -81,23 +81,44 @@ class SimpleMLP(nn.Module):
         return x
 
 
-# 2. 数据加载
-def get_data_loaders():
-    """获取训练集和测试集的DataLoader"""
-    transform = transforms.Compose([
+# 2. 数据加载（支持数据增强）
+def get_data_loaders(augmentation=True):
+    """
+    获取训练集和测试集的DataLoader
+    Args:
+        augmentation: 是否对训练集应用数据增强
+    """
+    # 测试集transform：仅标准化
+    test_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))  # 标准化
+        transforms.Normalize((0.1307,), (0.3081,))
     ])
+
+    # 训练集transform：可选数据增强
+    if augmentation:
+        print("数据增强: 已启用 (随机旋转±10°, 随机平移±10%, 随机缩放0.9-1.1)")
+        train_transform = transforms.Compose([
+            transforms.RandomAffine(
+                degrees=10,           # 随机旋转±10度
+                translate=(0.1, 0.1), # 随机平移±10%
+                scale=(0.9, 1.1),     # 随机缩放90%-110%
+            ),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+    else:
+        print("数据增强: 已禁用")
+        train_transform = test_transform
 
     # 训练集
     train_dataset = datasets.MNIST(
-        DATA_DIR, train=True, download=True, transform=transform)
+        DATA_DIR, train=True, download=True, transform=train_transform)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     # 测试集
     test_dataset = datasets.MNIST(
-        DATA_DIR, train=False, download=True, transform=transform)
+        DATA_DIR, train=False, download=True, transform=test_transform)
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
@@ -123,11 +144,11 @@ def evaluate(model, test_loader, device='cpu'):
     return accuracy
 
 
-# 4. 训练流程（优化版：学习率调度 + Early Stopping + 进度条 + 日志）
+# 4. 训练流程（学习率调度 + Early Stopping + 进度条 + 日志 + 数据增强）
 def train(save_best=True, model_path=MODEL_PATH, use_scheduler=True,
-          early_stopping_patience=7, log_enabled=True):
+          early_stopping_patience=7, log_enabled=True, augmentation=True):
     print("正在准备数据...")
-    train_loader, test_loader = get_data_loaders()
+    train_loader, test_loader = get_data_loaders(augmentation=augmentation)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"使用设备: {device}")
@@ -286,7 +307,6 @@ def load_model(path):
     return model
 
 
-
 # 4. 量化并导出为 C 头文件
 def export_weights_to_c(model, filename):
     print(f"正在导出权重到 {filename} ...")
@@ -408,6 +428,8 @@ if __name__ == "__main__":
                         help='Early Stopping容忍epoch数，0表示禁用 (默认: 7)')
     parser.add_argument('--no-log', action='store_true',
                         help='禁用训练日志记录（默认启用）')
+    parser.add_argument('--no-augmentation', action='store_true',
+                        help='禁用训练数据增强（默认启用）')
 
     args = parser.parse_args()
 
@@ -424,7 +446,8 @@ if __name__ == "__main__":
             model_path=args.model_path,
             use_scheduler=not args.no_scheduler,
             early_stopping_patience=args.early_stop,
-            log_enabled=not args.no_log
+            log_enabled=not args.no_log,
+            augmentation=not args.no_augmentation
         )
 
     elif args.mode == 'export':
@@ -441,7 +464,7 @@ if __name__ == "__main__":
         print("模式: 测试模型")
         print("=" * 50)
         model = load_model(args.model_path)
-        _, test_loader = get_data_loaders()
+        _, test_loader = get_data_loaders(augmentation=False)  # 测试时不使用数据增强
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = model.to(device)
         accuracy = evaluate(model, test_loader, device)
@@ -457,7 +480,8 @@ if __name__ == "__main__":
             model_path=args.model_path,
             use_scheduler=not args.no_scheduler,
             early_stopping_patience=args.early_stop,
-            log_enabled=not args.no_log
+            log_enabled=not args.no_log,
+            augmentation=not args.no_augmentation
         )
         export_weights_to_c(trained_model, args.export_path)
 

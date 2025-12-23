@@ -7,6 +7,7 @@ __pycache__/
 *.pth
 model_tools/data/
 model_tools/logs/
+model_tools/trained_models/
 
 # compiled C files
 *.o
@@ -21,6 +22,7 @@ model_tools/logs/
 *.exe
 
 # Quartus / Intel FPGA generated junk
+hardware/quartus_prj/*
 db/
 incremental_db/
 output_files/

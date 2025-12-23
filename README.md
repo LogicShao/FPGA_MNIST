@@ -42,7 +42,7 @@ FPGA_MNIST_Nios/
 本项目依赖特定版本的 PyTorch 环境。推荐使用 Conda 克隆环境：
 ```bash
 # 方式 A: 克隆现有环境 (推荐)
-conda create -n fpga_mnist --clone AutoVoiceCollation
+conda create -n fpga_mnist --clone your_conda_env_name
 conda activate fpga_mnist
 
 # 方式 B: 手动安装依赖
