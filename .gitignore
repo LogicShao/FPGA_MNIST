@@ -1,28 +1,4 @@
-# Python
-__pycache__/
-*.pyc
-*.venv/
-
-# PyTorch / ML
-*.pth
-model_tools/data/
-model_tools/logs/
-model_tools/trained_models/
-
-# compiled C files
-*.o
-*.elf
-*.map
-*.bin
-*.hex
-*.a
-*.lib
-*.so
-*.d
-*.exe
-
-# Quartus / Intel FPGA generated junk
-hardware/quartus_prj/*
+# Quartus 编译垃圾
 db/
 incremental_db/
 output_files/
@@ -31,10 +7,34 @@ simulation/
 *.pof
 *.sram
 *.qws
-*.jdi
-*.done
-*.summary
 
-# IDEs
+# IDE 生成的文件
 .vscode/
 .idea/
+*.qpf~
+*.qsf~
+*.qws~
+
+# MNIST data
+model_tools/data/
+*.gz
+
+# Nios II 编译垃圾
+*.elf
+*.map
+*.objdump
+*.o
+*.d
+*.dep
+/hardware/quartus_proj/**
+/hardware/quartus_proj/
+
+# 忽略 BSP (通常不需要提交，因为可以由 sopcinfo 重新生成)
+# 如果你修改了驱动源码，则需要注释掉下面这行
+/hardware/quartus_proj/qsys/software/*_bsp/
+hardware/software/
+*.bak
+*.swp
+*.log
+*.tmp
+*.bak~
