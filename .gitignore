@@ -46,3 +46,5 @@ model_tools/logs/
 __pycache__/
 *.exe
 *.bin
+*.out
+*.vcd
