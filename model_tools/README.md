@@ -1,15 +1,20 @@
 # MNIST MLP 训练与导出工具（优化版）
 
+## 版本说明
+
+- **v2（推荐）**：`train.py` + `export.py`，训练/导出解耦，支持多模型（详见 `README_v2.md`）
+- **v1（兼容）**：`v1/train_export.py`，单脚本多模式；本文档默认说明 v1 用法
+
 ## 功能说明
 
-本工具实现了训练和导出的完全解耦，支持以下四种独立模式：
+v1 一体化脚本支持以下四种独立模式：
 
 1. **仅训练模式** (`--mode train`)：训练模型，自动保存测试准确率最高的模型为 `.pth` 文件
 2. **仅导出模式** (`--mode export`)：加载已训练模型并导出为 C 头文件
 3. **测试模式** (`--mode test`)：加载已保存的模型并在测试集上评估准确率
 4. **完整流程模式** (`--mode all`)：训练 + 导出（默认）
 
-## 核心特性（v2.0 优化版）
+## 核心特性（v1 一体化脚本）
 
 ### 训练优化
 - **学习率自适应调度**：验证准确率停滞时自动降低学习率（ReduceLROnPlateau）
@@ -30,12 +35,14 @@
 
 ## 使用方法
 
+以下命令默认在 `model_tools/` 目录下执行。
+
 ### 1. 完整流程（训练 + 导出）
 
 ```bash
-python train_export.py
+python v1/train_export.py
 # 或显式指定
-python train_export.py --mode all
+python v1/train_export.py --mode all
 ```
 
 训练过程会显示每个epoch的损失和准确率，自动保存最优模型。
@@ -43,7 +50,7 @@ python train_export.py --mode all
 ### 2. 仅训练模型
 
 ```bash
-python train_export.py --mode train
+python v1/train_export.py --mode train
 ```
 
 训练完成后会保存最优模型到 `./mnist_model.pth`，并显示最佳测试准确率。
@@ -51,7 +58,7 @@ python train_export.py --mode train
 ### 3. 测试已保存的模型
 
 ```bash
-python train_export.py --mode test
+python v1/train_export.py --mode test
 ```
 
 加载模型并在测试集上评估准确率，输出详细准确率信息。
@@ -59,7 +66,7 @@ python train_export.py --mode test
 ### 4. 仅导出已训练模型
 
 ```bash
-python train_export.py --mode export
+python v1/train_export.py --mode export
 ```
 
 从 `./mnist_model.pth` 加载模型（显示保存的准确率）并导出到 `../software/app/model_weights.h`
@@ -70,10 +77,10 @@ python train_export.py --mode export
 
 ```bash
 # 默认启用数据增强（推荐）
-python train_export.py --mode train
+python v1/train_export.py --mode train
 
 # 禁用数据增强（用于对比实验）
-python train_export.py --mode train --no-augmentation
+python v1/train_export.py --mode train --no-augmentation
 ```
 
 **数据增强策略：**
@@ -90,49 +97,49 @@ python train_export.py --mode train --no-augmentation
 
 ```bash
 # 禁用学习率调度器
-python train_export.py --mode train --no-scheduler
+python v1/train_export.py --mode train --no-scheduler
 
 # 设置Early Stopping容忍度（0表示禁用）
-python train_export.py --mode train --early-stop 10
+python v1/train_export.py --mode train --early-stop 10
 
 # 禁用Early Stopping
-python train_export.py --mode train --early-stop 0
+python v1/train_export.py --mode train --early-stop 0
 
 # 禁用训练日志记录
-python train_export.py --mode train --no-log
+python v1/train_export.py --mode train --no-log
 ```
 
 ### 自定义训练轮数
 
 ```bash
-python train_export.py --mode train --epochs 10
+python v1/train_export.py --mode train --epochs 10
 ```
 
 ### 禁用自动保存最优模型
 
 ```bash
 # 不自动保存最优模型（训练最后一个epoch的模型）
-python train_export.py --mode train --no-save-best
+python v1/train_export.py --mode train --no-save-best
 ```
 
 ### 自定义模型路径
 
 ```bash
-python train_export.py --mode train --model-path ./my_model.pth
-python train_export.py --mode test --model-path ./my_model.pth
-python train_export.py --mode export --model-path ./my_model.pth
+python v1/train_export.py --mode train --model-path ./my_model.pth
+python v1/train_export.py --mode test --model-path ./my_model.pth
+python v1/train_export.py --mode export --model-path ./my_model.pth
 ```
 
 ### 自定义导出路径
 
 ```bash
-python train_export.py --mode export --export-path ./custom_output.h
+python v1/train_export.py --mode export --export-path ./custom_output.h
 ```
 
 ### 查看所有选项
 
 ```bash
-python train_export.py --help
+python v1/train_export.py --help
 ```
 
 ## 输出示例
@@ -205,54 +212,58 @@ epoch,train_loss,test_accuracy,learning_rate
 
 ```bash
 # 第1次训练（3轮）
-python train_export.py --mode train --epochs 3
+python v1/train_export.py --mode train --epochs 3
 
 # 测试模型效果
-python train_export.py --mode test
+python v1/train_export.py --mode test
 
 # 如果准确率不够，增加训练轮数
-python train_export.py --mode train --epochs 10 --model-path ./model_v2.pth
+python v1/train_export.py --mode train --epochs 10 --model-path ./model_v2.pth
 
 # 对比测试
-python train_export.py --mode test --model-path ./model_v2.pth
+python v1/train_export.py --mode test --model-path ./model_v2.pth
 
 # 选择最佳模型导出
-python train_export.py --mode export --model-path ./model_v2.pth
+python v1/train_export.py --mode export --model-path ./model_v2.pth
 ```
 
 ### 场景 2: 快速部署
 
 ```bash
 # 使用已训练好的模型直接导出（无需重新训练）
-python train_export.py --mode export
+python v1/train_export.py --mode export
 
 # 验证模型准确率
-python train_export.py --mode test
+python v1/train_export.py --mode test
 ```
 
 ### 场景 3: 批量实验对比
 
 ```bash
 # 训练多个不同配置的模型
-python train_export.py --mode train --epochs 3 --model-path ./model_e3.pth
-python train_export.py --mode train --epochs 5 --model-path ./model_e5.pth
-python train_export.py --mode train --epochs 10 --model-path ./model_e10.pth
+python v1/train_export.py --mode train --epochs 3 --model-path ./model_e3.pth
+python v1/train_export.py --mode train --epochs 5 --model-path ./model_e5.pth
+python v1/train_export.py --mode train --epochs 10 --model-path ./model_e10.pth
 
 # 测试所有模型并对比
-python train_export.py --mode test --model-path ./model_e3.pth
-python train_export.py --mode test --model-path ./model_e5.pth
-python train_export.py --mode test --model-path ./model_e10.pth
+python v1/train_export.py --mode test --model-path ./model_e3.pth
+python v1/train_export.py --mode test --model-path ./model_e5.pth
+python v1/train_export.py --mode test --model-path ./model_e10.pth
 
 # 选择最佳模型导出
-python train_export.py --mode export --model-path ./model_e10.pth
+python v1/train_export.py --mode export --model-path ./model_e10.pth
 ```
 
 ## 文件结构
 
 ```
 model_tools/
-├── train_export.py          # 主脚本（优化版）
-├── mnist_model.pth           # 训练保存的最优模型（自动生成）
+├── v1/
+│   └── train_export.py       # v1 一体化脚本（本文档说明）
+├── train.py                  # v2 训练脚本
+├── export.py                 # v2 导出脚本
+├── mnist_model.pth           # v1 训练保存的最优模型（自动生成）
+├── trained_models/           # v2 训练产物目录
 ├── data/                     # MNIST 数据集目录
 ├── logs/                     # 训练日志目录（CSV文件）
 │   └── training_YYYYMMDD_HHMMSS.csv
@@ -284,7 +295,7 @@ pip install torch torchvision numpy tqdm
 
 ## 核心优势
 
-### v2.0 优化版新增特性
+### 优化版新增特性（v1）
 - **训练效率提升**：学习率调度 + Early Stopping，节省30-50%训练时间
 - **准确率提升**：自适应学习率策略 + 数据增强，通常提升2-4%准确率
 - **量化精度提升**：对称量化算法，量化误差降低50%以上
@@ -294,7 +305,7 @@ pip install torch torchvision numpy tqdm
 
 ### 原有优势
 - **智能模型选择**：自动保存训练过程中准确率最高的模型，避免过拟合
-- **解耦训练和导出**：可独立执行，提高灵活性
+- **模式分离训练和导出**：可独立执行，提高灵活性
 - **模型复用**：训练一次，多次导出到不同位置
 - **快速迭代**：无需每次导出都重新训练
 - **配置灵活**：支持自定义路径和参数

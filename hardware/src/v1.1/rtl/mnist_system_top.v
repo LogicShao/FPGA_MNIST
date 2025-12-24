@@ -1,103 +1,114 @@
 module mnist_system_top(
-    input sys_clk,
-    input sys_rst_n,
+    input  sys_clk,
+    input  sys_rst_n,
     
-    // 串口
-    input uart_rx,  
-    output uart_tx, 
+    // UART 接口
+    input  uart_rx,      // PC -> FPGA (接收图片)
+    output uart_tx,      // FPGA -> PC (发送结果)
     
-    // 数码管 (沿用 V1)
+    // 数码管接口 (595 驱动)
     output ds,
     output oe,
     output shcp,
     output stcp
 );
 
-    wire nios2clk;
-    wire locked;
-    
-    // PIO 信号连接
-    wire [31:0] pio_seg_ctrl;     // 原来的数码管控制
-    wire [31:0] pio_img_data;     // [新增] Nios 发送给 FPGA 的数据
-    wire [31:0] pio_result;       // [新增] FPGA 返回给 Nios 的结果
+    // ==========================================
+    // 1. 内部信号定义
+    // ==========================================
+    // UART RX 信号
+    wire [7:0] rx_byte;
+    wire       rx_valid;     // 接收到一个字节的脉冲
 
-    // PLL
-    clk_pll niospll_inst(
-        .inclk0(sys_clk),
-        .c0(nios2clk),
-        .locked(locked)
-    );
-    
-    // 系统复位：物理复位键 + PLL 锁定信号
-    wire system_rst_n = sys_rst_n & locked;
-
-    // ========================================================
-    // 1. 实例化 Nios II 系统 (Qsys)
-    // ========================================================
-    qsys_system qsys_inst(
-        .clk_clk(nios2clk),
-        .reset_reset_n(system_rst_n),
-        
-        .uart_0_external_connection_rxd(uart_rx), 
-        .uart_0_external_connection_txd(uart_tx),
-        
-        // 旧的 PIO：控制数码管
-        .out_pio_external_connection_export(pio_seg_ctrl),
-        
-        // 新增的 PIO (需要在 Qsys 里添加)
-        // pio_img_data: bit[7:0]=pixel, bit[8]=valid, bit[9]=acc_rst
-        .pio_img_data_external_connection_export(pio_img_data),
-        
-        // 新增的 PIO: 读取结果
-        .pio_result_external_connection_export(pio_result)
-    );
-
-    // ========================================================
-    // 2. 信号解析
-    // ========================================================
-    // 从 pio_img_data 拆分信号
-    wire [7:0] pixel_from_cpu = pio_img_data[7:0];
-    wire       valid_from_cpu = pio_img_data[8];
-    wire       acc_rst_n      = system_rst_n & (~pio_img_data[9]); // 软复位
-
+    // 加速器信号
     wire [31:0] conv_result;
-    wire        conv_valid;
+    wire        conv_valid;  // 计算完成的脉冲
 
-    // ========================================================
-    // 3. 实例化你的硬件加速器
-    // ========================================================
-    conv_accelerator u_accelerator (
-        .clk(nios2clk),
-        .rst_n(acc_rst_n),
-        .valid_in(valid_from_cpu),
-        .pixel_in(pixel_from_cpu),
-        .result_ch0(conv_result),
-        .result_valid(conv_valid)
+    // 结果锁存寄存器 (用于数码管持续显示)
+    reg [3:0]   display_num;
+
+    // ==========================================
+    // 2. 结果锁存逻辑 (关键！)
+    // ==========================================
+    // 加速器的结果是瞬时的，数码管需要持续显示，
+    // 所以我们需要由一个寄存器来“记住”最后一次识别的结果。
+    always @(posedge sys_clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) begin
+            display_num <= 4'd0; // 复位默认显示 0
+        end else if (conv_valid) begin
+            // 当计算完成脉冲到来时，更新寄存器里的值
+            // 我们假设结果在 0-9 之间，取低 4 位即可
+            display_num <= conv_result[3:0]; 
+        end
+    end
+
+    // ==========================================
+    // 3. 实例化 UART RX (接收图片)
+    // ==========================================
+    uart_rx #(
+        .UART_BPS(115200),
+        .CLK_FREQ(50_000_000)
+    ) u_rx (
+        .sys_clk   (sys_clk),
+        .sys_rst_n (sys_rst_n),
+        .rx        (uart_rx),
+        .po_data   (rx_byte),
+        .po_flag   (rx_valid)  // 直接连到加速器的 valid_in
     );
 
-    // 把结果送回给 Nios (PIO Input)
-    // 也可以接一个 FIFO，或者简单的寄存器锁存
-    reg [31:0] result_latch;
-    always @(posedge nios2clk) begin
-        if (!acc_rst_n) result_latch <= 0;
-        else if (conv_valid) result_latch <= conv_result;
-    end
-    assign pio_result = result_latch;
+    // ==========================================
+    // 4. 实例化 卷积加速器 (计算核心)
+    // ==========================================
+    conv_accelerator u_acc (
+        .clk        (sys_clk),
+        .rst_n      (sys_rst_n),
+        .valid_in   (rx_valid),
+        .pixel_in   (rx_byte),
+        .result_ch0 (conv_result),
+        .result_valid (conv_valid)
+    );
 
-    // ========================================================
-    // 4. 数码管显示模块 (保持不变)
-    // ========================================================
-    seg_595_dynamic seg_inst(
-        .sys_clk(nios2clk),
-        .sys_rst_n(system_rst_n),
-        .data(pio_seg_ctrl[19:0]),
-        .point(pio_seg_ctrl[25:20]),
-        .seg_en(pio_seg_ctrl[26]),
-        .sign(pio_seg_ctrl[27]),
-        .ds(ds),
-        .oe(oe),
-        .shcp(shcp),
-        .stcp(stcp)     
+    // ==========================================
+    // 5. 实例化 UART TX (发送结果回PC)
+    // ==========================================
+    uart_tx #(
+        .UART_BPS(115200),
+        .CLK_FREQ(50_000_000)
+    ) u_tx (
+        .sys_clk   (sys_clk),
+        .sys_rst_n (sys_rst_n),
+        .pi_data   (conv_result[7:0]), // 发送低8位
+        .pi_flag   (conv_valid),       // 算完立刻发
+        .tx        (uart_tx)
+    );
+
+    // ==========================================
+    // 6. 实例化 数码管驱动 (本地显示)
+    // ==========================================
+    // 注意：这里假设你的 seg_595_dynamic 模块 data 接口宽度为 20位 (5位 x 4bits/digit)
+    // 我们把结果显示在最右边的个位上。
+    
+    seg_595_dynamic u_seg_595 (
+        .sys_clk   (sys_clk),
+        .sys_rst_n (sys_rst_n),
+        
+        // 数据映射：假设高位补0，最低4位接我们的识别结果
+        .data      ({16'd0, display_num}), 
+        
+        // 小数点：全不亮
+        .point     (6'b000000),         
+        
+        // 使能：常开
+        .seg_en    (1'b1),              
+        
+        // 符号位：正数
+        .sign      (1'b0),              
+        
+        // 物理引脚输出
+        .ds        (ds),
+        .oe        (oe),
+        .shcp      (shcp),
+        .stcp      (stcp)
     );
 
 endmodule

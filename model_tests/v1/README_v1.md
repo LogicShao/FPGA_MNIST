@@ -159,7 +159,7 @@ nios2-elf-gcc main.c -o mnist.elf
 **解决：**
 ```bash
 cd ../../model_tools
-python train_export.py --mode all
+python v1/train_export.py --mode all
 ```
 
 ## 性能优化建议
@@ -170,6 +170,6 @@ python train_export.py --mode all
 
 ## 参考
 
-- 训练脚本：`model_tools/train_export.py`
+- 训练脚本：`model_tools/v1/train_export.py`
 - 量化算法：对称量化（Symmetric Quantization）
 - 网络结构：784 -> 32 -> 10 (MLP)

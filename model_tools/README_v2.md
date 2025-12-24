@@ -8,7 +8,8 @@
 model_tools/
 ├── train.py              # 通用训练脚本（解耦）
 ├── export.py             # 通用导出脚本（解耦）
-├── train_export.py       # 旧版脚本（保留用于兼容）
+├── v1/
+│   └── train_export.py   # 旧版脚本（保留用于兼容）
 ├── models/               # 模型定义目录
 │   ├── __init__.py       # 模型注册系统
 │   ├── SimpleMLP.py      # 2层MLP模型
@@ -225,7 +226,7 @@ MODEL_REGISTRY = {
 
 ## 与旧版兼容性
 
-- 旧版 `train_export.py` 保留，可继续使用
+- 旧版 `v1/train_export.py` 保留，可继续使用
 - 新版架构与旧版模型文件格式完全兼容
 - 可以使用 `export.py` 导出旧版训练的模型
 

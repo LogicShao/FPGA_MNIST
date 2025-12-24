@@ -15,7 +15,7 @@
 
 ## 阶段 1：模型准备 (Model Preparation)
 **目标**：获得能在 C 语言环境中运行的 int8 权重数据。
-- [ ] **1.1 编写训练脚本** (`train_export.py`)：搭建 784->32->10 MLP 网络。
+- [ ] **1.1 编写训练脚本** (`model_tools/v1/train_export.py`)：搭建 784->32->10 MLP 网络。
 - [ ] **1.2 实现量化逻辑**：将 float32 权重转换为 int8 并在 Python 中验证精度损失。
 - [ ] **1.3 导出 C 头文件**：自动生成 `model_weights.h`。
 - [ ] **1.4 编写串口测试脚本** (`send_image.py`)：实现图片读取与协议封装发送。
@@ -70,4 +70,4 @@
     git commit -m "Docs: Add README and Development Plan"
     ```
 
-做完这些，你的项目看起来就已经非常专业了！接下来你可以放心地去跑 `train_export.py` 了。
+做完这些，你的项目看起来就已经非常专业了！接下来你可以放心地去跑 `model_tools/v1/train_export.py` 了。

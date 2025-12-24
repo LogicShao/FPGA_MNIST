@@ -91,7 +91,7 @@ python export.py --latest
 
 ## 新旧版本对比
 
-| 功能 | 旧版 (train_export.py) | 新版 (train.py + export.py) |
+| 功能 | 旧版 (v1/train_export.py) | 新版 (train.py + export.py) |
 |------|------------------------|----------------------------|
 | 模型切换 | 需修改代码 | 命令行参数 --model |
 | 训练导出 | 耦合在一起 | 完全分离 |
