@@ -234,9 +234,9 @@ def export_model(model_path, output_path=None):
     # 确定输出路径
     if output_path is None:
         if model_type == 'mlp':
-            output_path = "../software/v2/model_weights.h"
+            output_path = "../model_tests/v2/model_weights.h"
         else:
-            output_path = f"../software/v2/{model_name.lower()}_weights.h"
+            output_path = f"../model_tests/v2/{model_name.lower()}_weights.h"
 
     # 根据模型类型选择导出方法
     if model_type == 'mlp':
