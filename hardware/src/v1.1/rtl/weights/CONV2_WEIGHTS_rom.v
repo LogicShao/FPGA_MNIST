@@ -7,7 +7,7 @@ module rom_CONV2_WEIGHTS #(
     parameter integer ADDR_WIDTH = 12,
     parameter integer DATA_WIDTH = 8,
     parameter integer DEPTH = 2400,
-    parameter MEM_FILE = "CONV2_WEIGHTS.mem"
+    parameter MEM_FILE = "rtl/weights/CONV2_WEIGHTS.mem"
 ) (
     input  wire                    clk,
     input  wire [ADDR_WIDTH-1:0]   addr,

@@ -7,7 +7,7 @@ module rom_CONV2_BIASES #(
     parameter integer ADDR_WIDTH = 4,
     parameter integer DATA_WIDTH = 8,
     parameter integer DEPTH = 16,
-    parameter MEM_FILE = "CONV2_BIASES.mem"
+    parameter MEM_FILE = "rtl/weights/CONV2_BIASES.mem"
 ) (
     input  wire                    clk,
     input  wire [ADDR_WIDTH-1:0]   addr,

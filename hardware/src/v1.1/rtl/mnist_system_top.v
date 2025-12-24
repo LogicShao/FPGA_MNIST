@@ -1,12 +1,12 @@
 module mnist_system_top(
     input  sys_clk,
     input  sys_rst_n,
-    
-    // UART 接口
-    input  uart_rx,      // PC -> FPGA (接收图片)
-    output uart_tx,      // FPGA -> PC (发送结果)
-    
-    // 数码管接口 (595 驱动)
+
+    // UART
+    input  uart_rx,
+    output uart_tx,
+
+    // 7-seg (595)
     output ds,
     output oe,
     output shcp,
@@ -14,36 +14,29 @@ module mnist_system_top(
 );
 
     // ==========================================
-    // 1. 内部信号定义
+    // 1. Internal signals
     // ==========================================
-    // UART RX 信号
     wire [7:0] rx_byte;
-    wire       rx_valid;     // 接收到一个字节的脉冲
+    wire       rx_valid;
 
-    // 加速器信号
-    wire [31:0] conv_result;
-    wire        conv_valid;  // 计算完成的脉冲
+    wire [31:0] net_result;
+    wire        net_valid;
 
-    // 结果锁存寄存器 (用于数码管持续显示)
-    reg [3:0]   display_num;
+    reg [3:0] display_num;
 
     // ==========================================
-    // 2. 结果锁存逻辑 (关键！)
+    // 2. Result latch for display
     // ==========================================
-    // 加速器的结果是瞬时的，数码管需要持续显示，
-    // 所以我们需要由一个寄存器来“记住”最后一次识别的结果。
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
-            display_num <= 4'd0; // 复位默认显示 0
-        end else if (conv_valid) begin
-            // 当计算完成脉冲到来时，更新寄存器里的值
-            // 我们假设结果在 0-9 之间，取低 4 位即可
-            display_num <= conv_result[3:0]; 
+            display_num <= 4'd0;
+        end else if (net_valid) begin
+            display_num <= net_result[3:0];
         end
     end
 
     // ==========================================
-    // 3. 实例化 UART RX (接收图片)
+    // 3. UART RX
     // ==========================================
     uart_rx #(
         .UART_BPS(115200),
@@ -53,23 +46,23 @@ module mnist_system_top(
         .sys_rst_n (sys_rst_n),
         .rx        (uart_rx),
         .po_data   (rx_byte),
-        .po_flag   (rx_valid)  // 直接连到加速器的 valid_in
+        .po_flag   (rx_valid)
     );
 
     // ==========================================
-    // 4. 实例化 卷积加速器 (计算核心)
+    // 4. MNIST network core
     // ==========================================
-    conv_accelerator u_acc (
-        .clk        (sys_clk),
-        .rst_n      (sys_rst_n),
-        .valid_in   (rx_valid),
-        .pixel_in   (rx_byte),
-        .result_ch0 (conv_result),
-        .result_valid (conv_valid)
+    mnist_network_core u_core (
+        .clk          (sys_clk),
+        .rst_n        (sys_rst_n),
+        .valid_in     (rx_valid),
+        .pixel_in     (rx_byte),
+        .result       (net_result),
+        .result_valid (net_valid)
     );
 
     // ==========================================
-    // 5. 实例化 UART TX (发送结果回PC)
+    // 5. UART TX
     // ==========================================
     uart_tx #(
         .UART_BPS(115200),
@@ -77,34 +70,21 @@ module mnist_system_top(
     ) u_tx (
         .sys_clk   (sys_clk),
         .sys_rst_n (sys_rst_n),
-        .pi_data   (conv_result[7:0]), // 发送低8位
-        .pi_flag   (conv_valid),       // 算完立刻发
+        .pi_data   (net_result[7:0]),
+        .pi_flag   (net_valid),
         .tx        (uart_tx)
     );
 
     // ==========================================
-    // 6. 实例化 数码管驱动 (本地显示)
+    // 6. 7-seg driver
     // ==========================================
-    // 注意：这里假设你的 seg_595_dynamic 模块 data 接口宽度为 20位 (5位 x 4bits/digit)
-    // 我们把结果显示在最右边的个位上。
-    
     seg_595_dynamic u_seg_595 (
         .sys_clk   (sys_clk),
         .sys_rst_n (sys_rst_n),
-        
-        // 数据映射：假设高位补0，最低4位接我们的识别结果
-        .data      ({16'd0, display_num}), 
-        
-        // 小数点：全不亮
-        .point     (6'b000000),         
-        
-        // 使能：常开
-        .seg_en    (1'b1),              
-        
-        // 符号位：正数
-        .sign      (1'b0),              
-        
-        // 物理引脚输出
+        .data      ({16'd0, display_num}),
+        .point     (6'b000000),
+        .seg_en    (1'b1),
+        .sign      (1'b0),
         .ds        (ds),
         .oe        (oe),
         .shcp      (shcp),

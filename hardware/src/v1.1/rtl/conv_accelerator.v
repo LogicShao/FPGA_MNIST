@@ -1,48 +1,35 @@
+`timescale 1ns/1ps
+
 module conv_accelerator #(
     parameter IMG_WIDTH = 28,
     parameter DATA_WIDTH = 8,
-    parameter OUT_WIDTH = 32,
-    parameter signed [DATA_WIDTH-1:0] K00 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K01 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K02 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K03 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K04 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K10 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K11 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K12 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K13 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K14 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K20 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K21 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K22 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K23 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K24 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K30 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K31 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K32 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K33 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K34 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K40 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K41 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K42 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K43 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] K44 = 8'sd0,
-    parameter signed [DATA_WIDTH-1:0] BIAS = 8'sd0
+    parameter WEIGHT_WIDTH = 8,
+    parameter OUT_WIDTH = 32
 )(
     input wire clk,
     input wire rst_n,
     input wire valid_in,
     input wire [DATA_WIDTH-1:0] pixel_in,
 
+    input wire signed [WEIGHT_WIDTH-1:0] w00, w01, w02, w03, w04,
+    input wire signed [WEIGHT_WIDTH-1:0] w10, w11, w12, w13, w14,
+    input wire signed [WEIGHT_WIDTH-1:0] w20, w21, w22, w23, w24,
+    input wire signed [WEIGHT_WIDTH-1:0] w30, w31, w32, w33, w34,
+    input wire signed [WEIGHT_WIDTH-1:0] w40, w41, w42, w43, w44,
+    input wire signed [WEIGHT_WIDTH-1:0] bias,
+
     output wire signed [OUT_WIDTH-1:0] result_ch0,
     output wire result_valid
 );
 
-    wire [DATA_WIDTH-1:0] w00, w01, w02, w03, w04;
-    wire [DATA_WIDTH-1:0] w10, w11, w12, w13, w14;
-    wire [DATA_WIDTH-1:0] w20, w21, w22, w23, w24;
-    wire [DATA_WIDTH-1:0] w30, w31, w32, w33, w34;
-    wire [DATA_WIDTH-1:0] w40, w41, w42, w43, w44;
+    // ===============================================
+    // 1. Window Generator
+    // ===============================================
+    wire [DATA_WIDTH-1:0] w00_px, w01_px, w02_px, w03_px, w04_px;
+    wire [DATA_WIDTH-1:0] w10_px, w11_px, w12_px, w13_px, w14_px;
+    wire [DATA_WIDTH-1:0] w20_px, w21_px, w22_px, w23_px, w24_px;
+    wire [DATA_WIDTH-1:0] w30_px, w31_px, w32_px, w33_px, w34_px;
+    wire [DATA_WIDTH-1:0] w40_px, w41_px, w42_px, w43_px, w44_px;
     wire window_valid;
 
     layer1_window_gen #(
@@ -53,59 +40,68 @@ module conv_accelerator #(
         .rst_n        (rst_n),
         .valid_in     (valid_in),
         .din          (pixel_in),
-        .w00          (w00), .w01(w01), .w02(w02), .w03(w03), .w04(w04),
-        .w10          (w10), .w11(w11), .w12(w12), .w13(w13), .w14(w14),
-        .w20          (w20), .w21(w21), .w22(w22), .w23(w23), .w24(w24),
-        .w30          (w30), .w31(w31), .w32(w32), .w33(w33), .w34(w34),
-        .w40          (w40), .w41(w41), .w42(w42), .w43(w43), .w44(w44),
+        .w00(w00_px), .w01(w01_px), .w02(w02_px), .w03(w03_px), .w04(w04_px),
+        .w10(w10_px), .w11(w11_px), .w12(w12_px), .w13(w13_px), .w14(w14_px),
+        .w20(w20_px), .w21(w21_px), .w22(w22_px), .w23(w23_px), .w24(w24_px),
+        .w30(w30_px), .w31(w31_px), .w32(w32_px), .w33(w33_px), .w34(w34_px),
+        .w40(w40_px), .w41(w41_px), .w42(w42_px), .w43(w43_px), .w44(w44_px),
         .window_valid (window_valid)
     );
 
-    wire signed [DATA_WIDTH-1:0] p00 = $signed(w00);
-    wire signed [DATA_WIDTH-1:0] p01 = $signed(w01);
-    wire signed [DATA_WIDTH-1:0] p02 = $signed(w02);
-    wire signed [DATA_WIDTH-1:0] p03 = $signed(w03);
-    wire signed [DATA_WIDTH-1:0] p04 = $signed(w04);
-    wire signed [DATA_WIDTH-1:0] p10 = $signed(w10);
-    wire signed [DATA_WIDTH-1:0] p11 = $signed(w11);
-    wire signed [DATA_WIDTH-1:0] p12 = $signed(w12);
-    wire signed [DATA_WIDTH-1:0] p13 = $signed(w13);
-    wire signed [DATA_WIDTH-1:0] p14 = $signed(w14);
-    wire signed [DATA_WIDTH-1:0] p20 = $signed(w20);
-    wire signed [DATA_WIDTH-1:0] p21 = $signed(w21);
-    wire signed [DATA_WIDTH-1:0] p22 = $signed(w22);
-    wire signed [DATA_WIDTH-1:0] p23 = $signed(w23);
-    wire signed [DATA_WIDTH-1:0] p24 = $signed(w24);
-    wire signed [DATA_WIDTH-1:0] p30 = $signed(w30);
-    wire signed [DATA_WIDTH-1:0] p31 = $signed(w31);
-    wire signed [DATA_WIDTH-1:0] p32 = $signed(w32);
-    wire signed [DATA_WIDTH-1:0] p33 = $signed(w33);
-    wire signed [DATA_WIDTH-1:0] p34 = $signed(w34);
-    wire signed [DATA_WIDTH-1:0] p40 = $signed(w40);
-    wire signed [DATA_WIDTH-1:0] p41 = $signed(w41);
-    wire signed [DATA_WIDTH-1:0] p42 = $signed(w42);
-    wire signed [DATA_WIDTH-1:0] p43 = $signed(w43);
-    wire signed [DATA_WIDTH-1:0] p44 = $signed(w44);
+    // ===============================================
+    // 2. Zero-extend pixels to keep unsigned range
+    // ===============================================
+    localparam PE_PIXEL_WIDTH = DATA_WIDTH + 1;
 
+    wire signed [PE_PIXEL_WIDTH-1:0] p00 = {1'b0, w00_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p01 = {1'b0, w01_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p02 = {1'b0, w02_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p03 = {1'b0, w03_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p04 = {1'b0, w04_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p10 = {1'b0, w10_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p11 = {1'b0, w11_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p12 = {1'b0, w12_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p13 = {1'b0, w13_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p14 = {1'b0, w14_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p20 = {1'b0, w20_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p21 = {1'b0, w21_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p22 = {1'b0, w22_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p23 = {1'b0, w23_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p24 = {1'b0, w24_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p30 = {1'b0, w30_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p31 = {1'b0, w31_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p32 = {1'b0, w32_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p33 = {1'b0, w33_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p34 = {1'b0, w34_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p40 = {1'b0, w40_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p41 = {1'b0, w41_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p42 = {1'b0, w42_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p43 = {1'b0, w43_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p44 = {1'b0, w44_px};
+
+    // ===============================================
+    // 3. PE instance
+    // ===============================================
     conv_pe_5x5 #(
-        .DATA_WIDTH (DATA_WIDTH),
-        .OUT_WIDTH  (OUT_WIDTH)
+        .PIXEL_WIDTH  (PE_PIXEL_WIDTH),
+        .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe (
         .clk        (clk),
         .rst_n      (rst_n),
         .valid_in   (window_valid),
-        .p00        (p00), .p01(p01), .p02(p02), .p03(p03), .p04(p04),
-        .p10        (p10), .p11(p11), .p12(p12), .p13(p13), .p14(p14),
-        .p20        (p20), .p21(p21), .p22(p22), .p23(p23), .p24(p24),
-        .p30        (p30), .p31(p31), .p32(p32), .p33(p33), .p34(p34),
-        .p40        (p40), .p41(p41), .p42(p42), .p43(p43), .p44(p44),
-        .w00        (K00), .w01(K01), .w02(K02), .w03(K03), .w04(K04),
-        .w10        (K10), .w11(K11), .w12(K12), .w13(K13), .w14(K14),
-        .w20        (K20), .w21(K21), .w22(K22), .w23(K23), .w24(K24),
-        .w30        (K30), .w31(K31), .w32(K32), .w33(K33), .w34(K34),
-        .w40        (K40), .w41(K41), .w42(K42), .w43(K43), .w44(K44),
-        .bias       (BIAS),
-        .result     (result_ch0),
+        .p00(p00), .p01(p01), .p02(p02), .p03(p03), .p04(p04),
+        .p10(p10), .p11(p11), .p12(p12), .p13(p13), .p14(p14),
+        .p20(p20), .p21(p21), .p22(p22), .p23(p23), .p24(p24),
+        .p30(p30), .p31(p31), .p32(p32), .p33(p33), .p34(p34),
+        .p40(p40), .p41(p41), .p42(p42), .p43(p43), .p44(p44),
+        .w00(w00), .w01(w01), .w02(w02), .w03(w03), .w04(w04),
+        .w10(w10), .w11(w11), .w12(w12), .w13(w13), .w14(w14),
+        .w20(w20), .w21(w21), .w22(w22), .w23(w23), .w24(w24),
+        .w30(w30), .w31(w31), .w32(w32), .w33(w33), .w34(w34),
+        .w40(w40), .w41(w41), .w42(w42), .w43(w43), .w44(w44),
+        .bias         (bias),
+        .result       (result_ch0),
         .result_valid (result_valid)
     );
 

@@ -17,6 +17,7 @@ simulation/
 
 # MNIST data
 model_tools/data/
+data/
 *.gz
 
 # Nios II 编译垃圾
@@ -48,3 +49,4 @@ __pycache__/
 *.bin
 *.out
 *.vcd
+*.fst

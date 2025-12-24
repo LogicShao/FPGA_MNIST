@@ -1,69 +1,115 @@
+import argparse
+import glob
 import os
 import subprocess
 import sys
 
-# ================= 配置区域 =================
-# 项目结构配置
-RTL_DIR = "rtl"           # Verilog 源码目录
-TB_DIR = "tb"             # Testbench 目录
-SIM_DIR = "sim"           # 仿真输出目录
-TOP_MODULE = "vector_dot_product"  # 顶层模块名 (不带.v)
-TB_MODULE = "tb_" + TOP_MODULE    # Testbench 模块名
+# ================= Configuration =================
+# Project layout
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+RTL_DIR = os.path.join(BASE_DIR, "rtl")  # Verilog sources
+TB_DIR = os.path.join(BASE_DIR, "tb")    # Testbenches
+SIM_DIR = os.path.join(BASE_DIR, "sim")  # Simulation output
+TOP_MODULE = "mnist_system_top"          # Default DUT module name (no .v)
+TB_MODULE = "tb_" + TOP_MODULE           # Default TB module name
 
-# 文件路径
-RTL_FILES = [
-    os.path.join(RTL_DIR, f"{TOP_MODULE}.v")
-    # 如果有其他依赖文件，继续加在这里，例如: os.path.join(RTL_DIR, "defines.vh")
-]
-TB_FILE = os.path.join(TB_DIR, f"{TB_MODULE}.v")
+# File paths (resolved at runtime)
 OUT_FILE = os.path.join(SIM_DIR, "sim.out")
 WAVE_FILE = os.path.join(SIM_DIR, "wave.vcd")
 
 
-# ================= 脚本逻辑 =================
-def run_command(cmd):
-    """运行系统命令并检查是否成功"""
+def run_command(cmd, cwd=None):
+    """Run a command and fail fast on error."""
     print(f"[Exec] {cmd}")
-    # shell=True 允许在 Windows 上运行复杂的 shell 命令
-    result = subprocess.run(cmd, shell=True)
+    # shell=True allows complex Windows shell commands
+    result = subprocess.run(cmd, shell=True, cwd=cwd)
     if result.returncode != 0:
-        print(f"❌ Error: Command failed with code {result.returncode}")
+        print(f"Error: Command failed with code {result.returncode}")
         sys.exit(1)
 
 
+def collect_rtl_dirs(root_dir):
+    rtl_dirs = [root_dir]
+    for current, dirnames, _ in os.walk(root_dir):
+        for dname in dirnames:
+            rtl_dirs.append(os.path.join(current, dname))
+    return rtl_dirs
+
+
+def collect_extra_sources(root_dir):
+    weights_dir = os.path.join(root_dir, "weights")
+    rom_sources = glob.glob(os.path.join(weights_dir, "*_rom.v"))
+    return [os.path.abspath(p) for p in rom_sources]
+
+
+def resolve_tb_path(tb_arg):
+    if tb_arg.endswith(".v") or os.path.sep in tb_arg or "/" in tb_arg:
+        tb_path = tb_arg
+    else:
+        tb_path = os.path.join(TB_DIR, f"{tb_arg}.v")
+    tb_path = os.path.abspath(tb_path)
+    tb_module = os.path.splitext(os.path.basename(tb_path))[0]
+    return tb_path, tb_module
+
+
 def main():
-    # 1. 检查并创建 sim 目录
+    parser = argparse.ArgumentParser(description="Icarus Verilog simulation helper")
+    parser.add_argument(
+        "--tb",
+        default=TB_MODULE,
+        help="TB module name (without .v) or a TB file path",
+    )
+    parser.add_argument("--no-wave", action="store_true", help="Skip opening GTKWave")
+    args = parser.parse_args()
+
+    tb_path, tb_module = resolve_tb_path(args.tb)
+    if not os.path.exists(tb_path):
+        print(f"Error: TB file not found: {tb_path}")
+        sys.exit(1)
+
+    # 1. Ensure sim directory exists
     if not os.path.exists(SIM_DIR):
         os.makedirs(SIM_DIR)
-        print(f"✅ Created directory: {SIM_DIR}")
+        print(f"Created directory: {SIM_DIR}")
 
-    # 2. 编译 (Icarus Verilog)
-    # 构造命令: iverilog -o sim/sim.out -y rtl -I rtl tb/tb_xxx.v rtl/xxx.v
-    print("🚀 Compiling...")
-    rtl_sources = " ".join(RTL_FILES)
-    # -g2012 开启 SystemVerilog 支持(可选)，-y 指定库目录
-    compile_cmd = f"iverilog -o {OUT_FILE} -y {RTL_DIR} -I {RTL_DIR} {TB_FILE} {rtl_sources}"
-    run_command(compile_cmd)
-    print("✅ Compilation Successful.")
+    # 2. Compile (Icarus Verilog)
+    print("Compiling...")
+    rtl_dirs = collect_rtl_dirs(RTL_DIR)
+    inc_flags = " ".join(f'-I "{d}"' for d in rtl_dirs)
+    lib_flags = " ".join(f'-y "{d}"' for d in rtl_dirs)
+    extra_sources = " ".join(f'"{p}"' for p in collect_extra_sources(RTL_DIR))
+    out_file = os.path.join(SIM_DIR, f"{tb_module}.out")
+    compile_cmd = (
+        f'iverilog -g2012 -o "{out_file}" {inc_flags} {lib_flags} '
+        f'{extra_sources} "{tb_path}"'
+    )
+    run_command(compile_cmd, cwd=BASE_DIR)
+    print("Compilation successful.")
 
-    # 3. 运行仿真 (VVP)
-    print("RUNNING SIMULATION...")
-    # -n 表示仿真结束后自动 finish，不用手动退出的交互模式
-    sim_cmd = f"vvp -n {OUT_FILE}"
-    run_command(sim_cmd)
-    print("✅ Simulation Finished.")
+    # 3. Run simulation (VVP)
+    print("Running simulation...")
+    sim_cmd = f'vvp -n "{out_file}"'
+    run_command(sim_cmd, cwd=BASE_DIR)
+    print("Simulation finished.")
 
-    # 4. 打开波形 (GTKWave)
-    # 检查波形文件是否生成
-    if os.path.exists(WAVE_FILE):
-        print("🌊 Opening Waveform...")
-        # 使用 start 在新窗口打开，不阻塞当前终端
+    # 4. Open waveform (GTKWave)
+    if args.no_wave:
+        return
+
+    vcd_candidates = [
+        os.path.join(SIM_DIR, f"{tb_module}.vcd"),
+        os.path.join(BASE_DIR, f"{tb_module}.vcd"),
+        WAVE_FILE,
+    ]
+    wave_path = next((p for p in vcd_candidates if os.path.exists(p)), None)
+    if wave_path:
+        print(f"Opening waveform: {wave_path}")
         if sys.platform == "win32":
-            os.system(f"start gtkwave {WAVE_FILE}")
+            os.system(f'start gtkwave "{wave_path}"')
         else:
-            os.system(f"gtkwave {WAVE_FILE} &")
+            os.system(f'gtkwave "{wave_path}" &')
     else:
-        print("⚠️ Warning: Waveform file not found. Did you use $dumpfile in your TB?")
+        print("Warning: Waveform file not found. Did you use $dumpfile in your TB?")
 
 
 if __name__ == "__main__":

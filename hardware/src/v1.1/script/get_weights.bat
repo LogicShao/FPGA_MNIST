@@ -1,0 +1,1 @@
+python model_tools/weights_to_mem.py --input model_tests/v2/tinylenet_weights.h --out-dir hardware/src/v1.1/rtl/weights --format mem,mif --verilog

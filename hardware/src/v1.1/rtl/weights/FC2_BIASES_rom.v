@@ -7,7 +7,7 @@ module rom_FC2_BIASES #(
     parameter integer ADDR_WIDTH = 4,
     parameter integer DATA_WIDTH = 8,
     parameter integer DEPTH = 10,
-    parameter MEM_FILE = "FC2_BIASES.mem"
+    parameter MEM_FILE = "rtl/weights/FC2_BIASES.mem"
 ) (
     input  wire                    clk,
     input  wire [ADDR_WIDTH-1:0]   addr,
