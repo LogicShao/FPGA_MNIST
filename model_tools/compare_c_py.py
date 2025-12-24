@@ -90,11 +90,11 @@ def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     parser.add_argument("--models-dir", type=str, default=os.path.join(base_dir, "trained_models"),
                         help="Directory with .pth models")
-    parser.add_argument("--source", type=str, default=os.path.normpath(os.path.join(base_dir, "..", "software", "v2", "main.c")),
+    parser.add_argument("--source", type=str, default=os.path.normpath(os.path.join(base_dir, "..", "model_tests", "v2", "main.c")),
                         help="Path to C source")
-    parser.add_argument("--exe", type=str, default=os.path.normpath(os.path.join(base_dir, "..", "software", "v2", "main.exe")),
+    parser.add_argument("--exe", type=str, default=os.path.normpath(os.path.join(base_dir, "..", "model_tests", "v2", "main.exe")),
                         help="Path to C executable")
-    parser.add_argument("--bin", type=str, default=os.path.normpath(os.path.join(base_dir, "..", "software", "v2", "test_image.bin")),
+    parser.add_argument("--bin", type=str, default=os.path.normpath(os.path.join(base_dir, "..", "model_tests", "v2", "test_image.bin")),
                         help="Path to test_image.bin")
     args = parser.parse_args()
 

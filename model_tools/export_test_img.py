@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output",
         type=str,
-        default="../software/app/test_image.h",
+        default="../model_test/v1/test_image.h",
         help="Output path for test_image.h",
     )
     args = parser.parse_args()

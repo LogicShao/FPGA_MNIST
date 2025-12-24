@@ -19,7 +19,7 @@ BATCH_SIZE = 1024
 EPOCHS = 3
 HIDDEN_SIZE = 16  # 隐层节点数，FPGA资源有限，32或16比较合适
 MODEL_PATH = "./mnist_model.pth"  # 模型保存路径
-EXPORT_PATH = "../software/app/model_weights.h"  # 导出到 C 代码目录
+EXPORT_PATH = "../model_tests/v1/model_weights.h"  # 导出到 C 代码目录
 DATA_DIR = "./data"  # 数据集存储目录（相对于当前脚本）
 LOG_DIR = "./logs"  # 训练日志目录
 
