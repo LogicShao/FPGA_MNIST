@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+`include "quant_params.vh"
 
 module layer1_block(
     input wire clk,
@@ -19,7 +20,7 @@ module layer1_block(
     // 1. Weight ROM signals and loader
     // ==========================================
     wire signed [7:0] conv1_weight_q;
-    wire signed [7:0] conv1_bias_q;
+    wire signed [31:0] conv1_bias_q;
 
     reg [7:0] conv1_weight_addr;
     reg [2:0] conv1_bias_addr;
@@ -31,12 +32,12 @@ module layer1_block(
     reg signed [7:0] conv1_weights_ch4 [0:24];
     reg signed [7:0] conv1_weights_ch5 [0:24];
 
-    reg signed [7:0] conv1_bias_ch0;
-    reg signed [7:0] conv1_bias_ch1;
-    reg signed [7:0] conv1_bias_ch2;
-    reg signed [7:0] conv1_bias_ch3;
-    reg signed [7:0] conv1_bias_ch4;
-    reg signed [7:0] conv1_bias_ch5;
+    reg signed [31:0] conv1_bias_ch0;
+    reg signed [31:0] conv1_bias_ch1;
+    reg signed [31:0] conv1_bias_ch2;
+    reg signed [31:0] conv1_bias_ch3;
+    reg signed [31:0] conv1_bias_ch4;
+    reg signed [31:0] conv1_bias_ch5;
 
     localparam LOAD_WEIGHTS = 2'd0;
     localparam LOAD_BIAS    = 2'd1;
@@ -45,14 +46,19 @@ module layer1_block(
     reg [1:0] load_state;
     reg [7:0] load_idx;
     reg       load_capture;
+    reg [7:0] load_idx_d1;
+    reg       load_capture_d1;
 
     reg [2:0] bias_idx;
     reg       bias_capture;
+    reg [2:0] bias_idx_d1;
+    reg       bias_capture_d1;
 
     wire weights_ready = (load_state == LOAD_DONE);
     wire conv_valid_in = valid_in & weights_ready;
 
     integer i;
+    wire signed [7:0] pixel_in_s = pixel_in;
 
     rom_CONV1_WEIGHTS #(
         .ADDR_WIDTH(8),
@@ -65,11 +71,11 @@ module layer1_block(
         .q    (conv1_weight_q)
     );
 
-    rom_CONV1_BIASES #(
+    rom_CONV1_BIASES_INT32 #(
         .ADDR_WIDTH(3),
-        .DATA_WIDTH(8),
+        .DATA_WIDTH(32),
         .DEPTH(6),
-        .MEM_FILE("rtl/weights/CONV1_BIASES.mem")
+        .MEM_FILE("rtl/weights/CONV1_BIASES_INT32.mem")
     ) u_conv1_brom (
         .clk  (clk),
         .addr (conv1_bias_addr),
@@ -83,14 +89,18 @@ module layer1_block(
             load_state <= LOAD_WEIGHTS;
             load_idx <= 8'd0;
             load_capture <= 1'b0;
+            load_idx_d1 <= 8'd0;
+            load_capture_d1 <= 1'b0;
             bias_idx <= 3'd0;
             bias_capture <= 1'b0;
-            conv1_bias_ch0 <= 8'sd0;
-            conv1_bias_ch1 <= 8'sd0;
-            conv1_bias_ch2 <= 8'sd0;
-            conv1_bias_ch3 <= 8'sd0;
-            conv1_bias_ch4 <= 8'sd0;
-            conv1_bias_ch5 <= 8'sd0;
+            bias_idx_d1 <= 3'd0;
+            bias_capture_d1 <= 1'b0;
+            conv1_bias_ch0 <= 32'sd0;
+            conv1_bias_ch1 <= 32'sd0;
+            conv1_bias_ch2 <= 32'sd0;
+            conv1_bias_ch3 <= 32'sd0;
+            conv1_bias_ch4 <= 32'sd0;
+            conv1_bias_ch5 <= 32'sd0;
             for (i = 0; i < 25; i = i + 1) begin
                 conv1_weights_ch0[i] <= 8'sd0;
                 conv1_weights_ch1[i] <= 8'sd0;
@@ -102,21 +112,22 @@ module layer1_block(
         end else begin
             case (load_state)
                 LOAD_WEIGHTS: begin
-                    if (load_capture) begin
-                        if (load_idx != 0) begin
-                            if (load_idx - 1 < 25)
-                                conv1_weights_ch0[load_idx - 1] <= conv1_weight_q;
-                            else if (load_idx - 1 < 50)
-                                conv1_weights_ch1[load_idx - 1 - 25] <= conv1_weight_q;
-                            else if (load_idx - 1 < 75)
-                                conv1_weights_ch2[load_idx - 1 - 50] <= conv1_weight_q;
-                            else if (load_idx - 1 < 100)
-                                conv1_weights_ch3[load_idx - 1 - 75] <= conv1_weight_q;
-                            else if (load_idx - 1 < 125)
-                                conv1_weights_ch4[load_idx - 1 - 100] <= conv1_weight_q;
-                            else
-                                conv1_weights_ch5[load_idx - 1 - 125] <= conv1_weight_q;
-                        end
+                    load_idx_d1 <= load_idx;
+                    load_capture_d1 <= load_capture;
+
+                    if (load_capture_d1 && load_idx_d1 != 0 && load_idx_d1 <= 8'd150) begin
+                        if (load_idx_d1 - 1 < 25)
+                            conv1_weights_ch0[load_idx_d1 - 1] <= conv1_weight_q;
+                        else if (load_idx_d1 - 1 < 50)
+                            conv1_weights_ch1[load_idx_d1 - 1 - 25] <= conv1_weight_q;
+                        else if (load_idx_d1 - 1 < 75)
+                            conv1_weights_ch2[load_idx_d1 - 1 - 50] <= conv1_weight_q;
+                        else if (load_idx_d1 - 1 < 100)
+                            conv1_weights_ch3[load_idx_d1 - 1 - 75] <= conv1_weight_q;
+                        else if (load_idx_d1 - 1 < 125)
+                            conv1_weights_ch4[load_idx_d1 - 1 - 100] <= conv1_weight_q;
+                        else
+                            conv1_weights_ch5[load_idx_d1 - 1 - 125] <= conv1_weight_q;
                     end
 
                     if (load_idx < 150) begin
@@ -125,14 +136,21 @@ module layer1_block(
                         load_capture <= 1'b1;
                     end else begin
                         load_capture <= 1'b0;
-                        load_state <= LOAD_BIAS;
-                        bias_idx <= 3'd0;
-                        bias_capture <= 1'b0;
+                        if (!load_capture_d1) begin
+                            load_state <= LOAD_BIAS;
+                            bias_idx <= 3'd0;
+                            bias_capture <= 1'b0;
+                            bias_idx_d1 <= 3'd0;
+                            bias_capture_d1 <= 1'b0;
+                        end
                     end
                 end
                 LOAD_BIAS: begin
-                    if (bias_capture) begin
-                        case (bias_idx - 1)
+                    bias_idx_d1 <= bias_idx;
+                    bias_capture_d1 <= bias_capture;
+
+                    if (bias_capture_d1 && bias_idx_d1 != 0 && bias_idx_d1 <= 3'd6) begin
+                        case (bias_idx_d1 - 1)
                             3'd0: conv1_bias_ch0 <= conv1_bias_q;
                             3'd1: conv1_bias_ch1 <= conv1_bias_q;
                             3'd2: conv1_bias_ch2 <= conv1_bias_q;
@@ -148,7 +166,8 @@ module layer1_block(
                         bias_capture <= 1'b1;
                     end else begin
                         bias_capture <= 1'b0;
-                        load_state <= LOAD_DONE;
+                        if (!bias_capture_d1)
+                            load_state <= LOAD_DONE;
                     end
                 end
                 default: begin
@@ -167,6 +186,13 @@ module layer1_block(
     wire [31:0] conv_ch4;
     wire [31:0] conv_ch5;
     wire conv_valid;
+    reg [31:0] conv_ch0_r;
+    reg [31:0] conv_ch1_r;
+    reg [31:0] conv_ch2_r;
+    reg [31:0] conv_ch3_r;
+    reg [31:0] conv_ch4_r;
+    reg [31:0] conv_ch5_r;
+    reg conv_valid_r;
 
     conv1_core #(
         .IMG_WIDTH(28),
@@ -177,7 +203,7 @@ module layer1_block(
         .clk      (clk),
         .rst_n    (rst_n),
         .valid_in (conv_valid_in),
-        .pixel_in (pixel_in),
+        .pixel_in (pixel_in_s),
         .w00_ch0 (conv1_weights_ch0[0]),  .w01_ch0 (conv1_weights_ch0[1]),  .w02_ch0 (conv1_weights_ch0[2]),  .w03_ch0 (conv1_weights_ch0[3]),  .w04_ch0 (conv1_weights_ch0[4]),
         .w10_ch0 (conv1_weights_ch0[5]),  .w11_ch0 (conv1_weights_ch0[6]),  .w12_ch0 (conv1_weights_ch0[7]),  .w13_ch0 (conv1_weights_ch0[8]),  .w14_ch0 (conv1_weights_ch0[9]),
         .w20_ch0 (conv1_weights_ch0[10]), .w21_ch0 (conv1_weights_ch0[11]), .w22_ch0 (conv1_weights_ch0[12]), .w23_ch0 (conv1_weights_ch0[13]), .w24_ch0 (conv1_weights_ch0[14]),
@@ -226,19 +252,60 @@ module layer1_block(
     // ==========================================
     // 3. Max pool 2x2 (6 channels)
     // ==========================================
+
+    wire signed [7:0] conv1_q0;
+    wire signed [7:0] conv1_q1;
+    wire signed [7:0] conv1_q2;
+    wire signed [7:0] conv1_q3;
+    wire signed [7:0] conv1_q4;
+    wire signed [7:0] conv1_q5;
+
+    wire signed [31:0] conv1_q0_32 = {{24{conv1_q0[7]}}, conv1_q0};
+    wire signed [31:0] conv1_q1_32 = {{24{conv1_q1[7]}}, conv1_q1};
+    wire signed [31:0] conv1_q2_32 = {{24{conv1_q2[7]}}, conv1_q2};
+    wire signed [31:0] conv1_q3_32 = {{24{conv1_q3[7]}}, conv1_q3};
+    wire signed [31:0] conv1_q4_32 = {{24{conv1_q4[7]}}, conv1_q4};
+    wire signed [31:0] conv1_q5_32 = {{24{conv1_q5[7]}}, conv1_q5};
+
+    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV1), .SHIFT_VAL(`Q_SHIFT)) u_q1_ch0 (.acc_in(conv_ch0_r), .q_out(conv1_q0));
+    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV1), .SHIFT_VAL(`Q_SHIFT)) u_q1_ch1 (.acc_in(conv_ch1_r), .q_out(conv1_q1));
+    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV1), .SHIFT_VAL(`Q_SHIFT)) u_q1_ch2 (.acc_in(conv_ch2_r), .q_out(conv1_q2));
+    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV1), .SHIFT_VAL(`Q_SHIFT)) u_q1_ch3 (.acc_in(conv_ch3_r), .q_out(conv1_q3));
+    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV1), .SHIFT_VAL(`Q_SHIFT)) u_q1_ch4 (.acc_in(conv_ch4_r), .q_out(conv1_q4));
+    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV1), .SHIFT_VAL(`Q_SHIFT)) u_q1_ch5 (.acc_in(conv_ch5_r), .q_out(conv1_q5));
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            conv_ch0_r <= 0;
+            conv_ch1_r <= 0;
+            conv_ch2_r <= 0;
+            conv_ch3_r <= 0;
+            conv_ch4_r <= 0;
+            conv_ch5_r <= 0;
+            conv_valid_r <= 1'b0;
+        end else begin
+            conv_ch0_r <= conv_ch0;
+            conv_ch1_r <= conv_ch1;
+            conv_ch2_r <= conv_ch2;
+            conv_ch3_r <= conv_ch3;
+            conv_ch4_r <= conv_ch4;
+            conv_ch5_r <= conv_ch5;
+            conv_valid_r <= conv_valid;
+        end
+    end
+
     max_pool_2x2 #(
         .IN_WIDTH(24),
         .IN_HEIGHT(24)
     ) u_pool (
         .clk      (clk),
         .rst_n    (rst_n),
-        .valid_in (conv_valid),
-        .in_ch0   (conv_ch0),
-        .in_ch1   (conv_ch1),
-        .in_ch2   (conv_ch2),
-        .in_ch3   (conv_ch3),
-        .in_ch4   (conv_ch4),
-        .in_ch5   (conv_ch5),
+        .valid_in (conv_valid_r),
+        .in_ch0   (conv1_q0_32),
+        .in_ch1   (conv1_q1_32),
+        .in_ch2   (conv1_q2_32),
+        .in_ch3   (conv1_q3_32),
+        .in_ch4   (conv1_q4_32),
+        .in_ch5   (conv1_q5_32),
         .out_ch0  (result_ch0),
         .out_ch1  (result_ch1),
         .out_ch2  (result_ch2),

@@ -1,9 +1,10 @@
 `timescale 1ns/1ps
 
 module conv_pe_5x5 #(
-    parameter PIXEL_WIDTH = 9,  // [修改] 输入像素位宽改为 9 (为了支持 +255)
-    parameter WEIGHT_WIDTH = 8, // [修改] 权重位宽保持 8 (signed int8)
-    parameter OUT_WIDTH = 32    // 输出位宽
+    parameter PIXEL_WIDTH = 9,
+    parameter WEIGHT_WIDTH = 8,
+    parameter BIAS_WIDTH = 32,
+    parameter OUT_WIDTH = 32
 )(
     input wire clk,
     input wire rst_n,
@@ -23,7 +24,7 @@ module conv_pe_5x5 #(
     input wire signed [WEIGHT_WIDTH-1:0] w30, w31, w32, w33, w34,
     input wire signed [WEIGHT_WIDTH-1:0] w40, w41, w42, w43, w44,
     
-    input wire signed [WEIGHT_WIDTH-1:0] bias,
+    input wire signed [BIAS_WIDTH-1:0] bias,
 
     output reg signed [OUT_WIDTH-1:0] result,
     output reg result_valid

@@ -2,6 +2,7 @@ import argparse
 import glob
 import os
 import subprocess
+import shutil
 import sys
 
 # ================= Configuration =================
@@ -39,7 +40,8 @@ def collect_rtl_dirs(root_dir):
 def collect_extra_sources(root_dir):
     weights_dir = os.path.join(root_dir, "weights")
     rom_sources = glob.glob(os.path.join(weights_dir, "*_rom.v"))
-    return [os.path.abspath(p) for p in rom_sources]
+    rtl_sources = glob.glob(os.path.join(root_dir, "*.v")) + glob.glob(os.path.join(root_dir, "*.sv"))
+    return [os.path.abspath(p) for p in (rom_sources + rtl_sources)]
 
 
 def resolve_tb_path(tb_arg):
@@ -60,6 +62,7 @@ def main():
         help="TB module name (without .v) or a TB file path",
     )
     parser.add_argument("--no-wave", action="store_true", help="Skip opening GTKWave")
+    parser.add_argument("--fast", action="store_true", help="Enable FAST_SIM shortcuts")
     args = parser.parse_args()
 
     tb_path, tb_module = resolve_tb_path(args.tb)
@@ -78,9 +81,10 @@ def main():
     inc_flags = " ".join(f'-I "{d}"' for d in rtl_dirs)
     lib_flags = " ".join(f'-y "{d}"' for d in rtl_dirs)
     extra_sources = " ".join(f'"{p}"' for p in collect_extra_sources(RTL_DIR))
+    fast_flag = "-DFAST_SIM" if args.fast else ""
     out_file = os.path.join(SIM_DIR, f"{tb_module}.out")
     compile_cmd = (
-        f'iverilog -g2012 -o "{out_file}" {inc_flags} {lib_flags} '
+        f'iverilog -g2012 {fast_flag} -o "{out_file}" {inc_flags} {lib_flags} '
         f'{extra_sources} "{tb_path}"'
     )
     run_command(compile_cmd, cwd=BASE_DIR)
@@ -92,7 +96,7 @@ def main():
     run_command(sim_cmd, cwd=BASE_DIR)
     print("Simulation finished.")
 
-    # 4. Open waveform (GTKWave)
+    # 4. Convert VCD to FST when possible (smaller and faster to open)
     if args.no_wave:
         return
 
@@ -101,11 +105,26 @@ def main():
         os.path.join(BASE_DIR, f"{tb_module}.vcd"),
         WAVE_FILE,
     ]
+    vcd_path = next((p for p in vcd_candidates if os.path.exists(p)), None)
+    fst_path = None
+    vcd2fst = shutil.which("vcd2fst")
+    if vcd_path and vcd2fst:
+        fst_path = os.path.splitext(vcd_path)[0] + ".fst"
+        if not os.path.exists(fst_path):
+            run_command(f'"{vcd2fst}" -o "{fst_path}" "{vcd_path}"', cwd=BASE_DIR)
+
+    wave_candidates = [
+        fst_path,
+        os.path.join(SIM_DIR, f"{tb_module}.fst"),
+        os.path.join(BASE_DIR, f"{tb_module}.fst"),
+        vcd_path,
+    ]
+    wave_path = next((p for p in wave_candidates if p and os.path.exists(p)), None)
     wave_path = next((p for p in vcd_candidates if os.path.exists(p)), None)
     if wave_path:
         print(f"Opening waveform: {wave_path}")
         if sys.platform == "win32":
-            os.system(f'start gtkwave "{wave_path}"')
+            os.system(f'start "" gtkwave "{wave_path}"')
         else:
             os.system(f'gtkwave "{wave_path}" &')
     else:

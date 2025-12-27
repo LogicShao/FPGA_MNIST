@@ -1,3 +1,5 @@
+import json
+import os
 import serial
 import time
 import numpy as np
@@ -5,19 +7,34 @@ import numpy as np
 # --- Serial config (update COM port as needed) ---
 SERIAL_PORT = "COM5"  # Windows example; Linux/Mac: /dev/ttyUSB0
 BAUD_RATE = 115200
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+QUANT_PARAMS_PATH = os.path.join(os.path.dirname(__file__), "quant_params.json")
 
 
-def _normalize_pixels(arr):
+def _load_quant_params():
+    if not os.path.exists(QUANT_PARAMS_PATH):
+        return None, False
+    with open(QUANT_PARAMS_PATH, "r", encoding="utf-8") as f:
+        params = json.load(f)
+    s_in = float(params["scales"]["s_in"])
+    normalize = bool(params.get("normalize", False))
+    return s_in, normalize
+
+
+def _quantize_pixels(arr, s_in=None, normalize=False):
     arr = np.asarray(arr)
     if arr.size != 28 * 28:
         raise ValueError(f"Expected 784 pixels, got {arr.size}")
     if np.issubdtype(arr.dtype, np.floating):
-        max_val = float(np.max(arr)) if arr.size else 0.0
-        if max_val <= 1.0:
-            arr = (arr * 127.0).astype(np.int8)
-        else:
-            arr = arr.astype(np.int8)
+        arr = arr.astype(np.float32)
+        if normalize:
+            arr = (arr - 0.1307) / 0.3081
+        if s_in is None:
+            abs_max = float(np.max(np.abs(arr))) if arr.size else 0.0
+            s_in = 127.0 / abs_max if abs_max > 0 else 1.0
+        arr = np.clip(np.round(arr * s_in), -128, 127).astype(np.int8)
     else:
+        # Assume already-quantized int8.
         arr = arr.astype(np.int8)
     return arr.flatten()
 
@@ -27,24 +44,26 @@ def get_mnist_image(index=0):
     from torchvision import datasets, transforms
 
     dataset = datasets.MNIST(
-        "./data",
+        DATA_DIR,
         train=False,
         download=True,
         transform=transforms.Compose([transforms.ToTensor()]),
     )
     img, label = dataset[index]
-    img_np = (img.numpy().squeeze() * 127).astype(np.int8)
-    return img_np.flatten(), label
+    img_np = img.numpy().squeeze()
+    s_in, normalize = _load_quant_params()
+    return _quantize_pixels(img_np, s_in, normalize), label
 
 
 def load_npy_image(path):
     data = np.load(path)
-    return _normalize_pixels(data), None
+    s_in, normalize = _load_quant_params()
+    return _quantize_pixels(data, s_in, normalize), None
 
 
 def load_bin_image(path):
     raw = np.fromfile(path, dtype=np.int8)
-    return _normalize_pixels(raw), None
+    return _quantize_pixels(raw, None, False), None
 
 
 def send_via_uart(data_bytes):
@@ -86,11 +105,11 @@ if __name__ == "__main__":
             break
 
         try:
-            if choice == "1":
-                idx_str = input("MNIST index (0-9999, default 0): ").strip()
-                idx = int(idx_str) if idx_str else 0
-                pixels, label = get_mnist_image(idx)
-                print(f"MNIST label: {label}")
+        if choice == "1":
+            idx_str = input("MNIST index (0-9999, default 0): ").strip()
+            idx = int(idx_str) if idx_str else 0
+            pixels, label = get_mnist_image(idx)
+            print(f"MNIST label: {label}")
             elif choice == "2":
                 path = input("Path to .npy: ").strip()
                 pixels, _ = load_npy_image(path)

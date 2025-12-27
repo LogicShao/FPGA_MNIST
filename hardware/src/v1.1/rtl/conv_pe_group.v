@@ -3,6 +3,7 @@
 module conv_pe_group #(
     parameter PIXEL_WIDTH = 9,
     parameter WEIGHT_WIDTH = 8,
+    parameter BIAS_WIDTH = 32,
     parameter OUT_WIDTH = 32
 )(
     input wire clk,
@@ -20,42 +21,42 @@ module conv_pe_group #(
     input wire signed [WEIGHT_WIDTH-1:0] w20_ch0, w21_ch0, w22_ch0, w23_ch0, w24_ch0,
     input wire signed [WEIGHT_WIDTH-1:0] w30_ch0, w31_ch0, w32_ch0, w33_ch0, w34_ch0,
     input wire signed [WEIGHT_WIDTH-1:0] w40_ch0, w41_ch0, w42_ch0, w43_ch0, w44_ch0,
-    input wire signed [WEIGHT_WIDTH-1:0] bias_ch0,
+    input wire signed [BIAS_WIDTH-1:0] bias_ch0,
 
     input wire signed [WEIGHT_WIDTH-1:0] w00_ch1, w01_ch1, w02_ch1, w03_ch1, w04_ch1,
     input wire signed [WEIGHT_WIDTH-1:0] w10_ch1, w11_ch1, w12_ch1, w13_ch1, w14_ch1,
     input wire signed [WEIGHT_WIDTH-1:0] w20_ch1, w21_ch1, w22_ch1, w23_ch1, w24_ch1,
     input wire signed [WEIGHT_WIDTH-1:0] w30_ch1, w31_ch1, w32_ch1, w33_ch1, w34_ch1,
     input wire signed [WEIGHT_WIDTH-1:0] w40_ch1, w41_ch1, w42_ch1, w43_ch1, w44_ch1,
-    input wire signed [WEIGHT_WIDTH-1:0] bias_ch1,
+    input wire signed [BIAS_WIDTH-1:0] bias_ch1,
 
     input wire signed [WEIGHT_WIDTH-1:0] w00_ch2, w01_ch2, w02_ch2, w03_ch2, w04_ch2,
     input wire signed [WEIGHT_WIDTH-1:0] w10_ch2, w11_ch2, w12_ch2, w13_ch2, w14_ch2,
     input wire signed [WEIGHT_WIDTH-1:0] w20_ch2, w21_ch2, w22_ch2, w23_ch2, w24_ch2,
     input wire signed [WEIGHT_WIDTH-1:0] w30_ch2, w31_ch2, w32_ch2, w33_ch2, w34_ch2,
     input wire signed [WEIGHT_WIDTH-1:0] w40_ch2, w41_ch2, w42_ch2, w43_ch2, w44_ch2,
-    input wire signed [WEIGHT_WIDTH-1:0] bias_ch2,
+    input wire signed [BIAS_WIDTH-1:0] bias_ch2,
 
     input wire signed [WEIGHT_WIDTH-1:0] w00_ch3, w01_ch3, w02_ch3, w03_ch3, w04_ch3,
     input wire signed [WEIGHT_WIDTH-1:0] w10_ch3, w11_ch3, w12_ch3, w13_ch3, w14_ch3,
     input wire signed [WEIGHT_WIDTH-1:0] w20_ch3, w21_ch3, w22_ch3, w23_ch3, w24_ch3,
     input wire signed [WEIGHT_WIDTH-1:0] w30_ch3, w31_ch3, w32_ch3, w33_ch3, w34_ch3,
     input wire signed [WEIGHT_WIDTH-1:0] w40_ch3, w41_ch3, w42_ch3, w43_ch3, w44_ch3,
-    input wire signed [WEIGHT_WIDTH-1:0] bias_ch3,
+    input wire signed [BIAS_WIDTH-1:0] bias_ch3,
 
     input wire signed [WEIGHT_WIDTH-1:0] w00_ch4, w01_ch4, w02_ch4, w03_ch4, w04_ch4,
     input wire signed [WEIGHT_WIDTH-1:0] w10_ch4, w11_ch4, w12_ch4, w13_ch4, w14_ch4,
     input wire signed [WEIGHT_WIDTH-1:0] w20_ch4, w21_ch4, w22_ch4, w23_ch4, w24_ch4,
     input wire signed [WEIGHT_WIDTH-1:0] w30_ch4, w31_ch4, w32_ch4, w33_ch4, w34_ch4,
     input wire signed [WEIGHT_WIDTH-1:0] w40_ch4, w41_ch4, w42_ch4, w43_ch4, w44_ch4,
-    input wire signed [WEIGHT_WIDTH-1:0] bias_ch4,
+    input wire signed [BIAS_WIDTH-1:0] bias_ch4,
 
     input wire signed [WEIGHT_WIDTH-1:0] w00_ch5, w01_ch5, w02_ch5, w03_ch5, w04_ch5,
     input wire signed [WEIGHT_WIDTH-1:0] w10_ch5, w11_ch5, w12_ch5, w13_ch5, w14_ch5,
     input wire signed [WEIGHT_WIDTH-1:0] w20_ch5, w21_ch5, w22_ch5, w23_ch5, w24_ch5,
     input wire signed [WEIGHT_WIDTH-1:0] w30_ch5, w31_ch5, w32_ch5, w33_ch5, w34_ch5,
     input wire signed [WEIGHT_WIDTH-1:0] w40_ch5, w41_ch5, w42_ch5, w43_ch5, w44_ch5,
-    input wire signed [WEIGHT_WIDTH-1:0] bias_ch5,
+    input wire signed [BIAS_WIDTH-1:0] bias_ch5,
 
     output wire signed [OUT_WIDTH-1:0] result_ch0,
     output wire signed [OUT_WIDTH-1:0] result_ch1,
@@ -78,6 +79,7 @@ module conv_pe_group #(
     conv_pe_5x5 #(
         .PIXEL_WIDTH  (PIXEL_WIDTH),
         .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .BIAS_WIDTH   (BIAS_WIDTH),
         .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe0 (
         .clk        (clk),
@@ -101,6 +103,7 @@ module conv_pe_group #(
     conv_pe_5x5 #(
         .PIXEL_WIDTH  (PIXEL_WIDTH),
         .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .BIAS_WIDTH   (BIAS_WIDTH),
         .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe1 (
         .clk        (clk),
@@ -124,6 +127,7 @@ module conv_pe_group #(
     conv_pe_5x5 #(
         .PIXEL_WIDTH  (PIXEL_WIDTH),
         .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .BIAS_WIDTH   (BIAS_WIDTH),
         .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe2 (
         .clk        (clk),
@@ -147,6 +151,7 @@ module conv_pe_group #(
     conv_pe_5x5 #(
         .PIXEL_WIDTH  (PIXEL_WIDTH),
         .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .BIAS_WIDTH   (BIAS_WIDTH),
         .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe3 (
         .clk        (clk),
@@ -170,6 +175,7 @@ module conv_pe_group #(
     conv_pe_5x5 #(
         .PIXEL_WIDTH  (PIXEL_WIDTH),
         .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .BIAS_WIDTH   (BIAS_WIDTH),
         .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe4 (
         .clk        (clk),
@@ -193,6 +199,7 @@ module conv_pe_group #(
     conv_pe_5x5 #(
         .PIXEL_WIDTH  (PIXEL_WIDTH),
         .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .BIAS_WIDTH   (BIAS_WIDTH),
         .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe5 (
         .clk        (clk),

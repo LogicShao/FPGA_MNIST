@@ -16,7 +16,7 @@ module conv_accelerator #(
     input wire signed [WEIGHT_WIDTH-1:0] w20, w21, w22, w23, w24,
     input wire signed [WEIGHT_WIDTH-1:0] w30, w31, w32, w33, w34,
     input wire signed [WEIGHT_WIDTH-1:0] w40, w41, w42, w43, w44,
-    input wire signed [WEIGHT_WIDTH-1:0] bias,
+    input wire signed [31:0] bias,
 
     output wire signed [OUT_WIDTH-1:0] result_ch0,
     output wire result_valid
@@ -53,31 +53,31 @@ module conv_accelerator #(
     // ===============================================
     localparam PE_PIXEL_WIDTH = DATA_WIDTH + 1;
 
-    wire signed [PE_PIXEL_WIDTH-1:0] p00 = {1'b0, w00_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p01 = {1'b0, w01_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p02 = {1'b0, w02_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p03 = {1'b0, w03_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p04 = {1'b0, w04_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p10 = {1'b0, w10_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p11 = {1'b0, w11_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p12 = {1'b0, w12_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p13 = {1'b0, w13_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p14 = {1'b0, w14_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p20 = {1'b0, w20_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p21 = {1'b0, w21_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p22 = {1'b0, w22_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p23 = {1'b0, w23_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p24 = {1'b0, w24_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p30 = {1'b0, w30_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p31 = {1'b0, w31_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p32 = {1'b0, w32_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p33 = {1'b0, w33_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p34 = {1'b0, w34_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p40 = {1'b0, w40_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p41 = {1'b0, w41_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p42 = {1'b0, w42_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p43 = {1'b0, w43_px};
-    wire signed [PE_PIXEL_WIDTH-1:0] p44 = {1'b0, w44_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p00 = {{1{w00_px[DATA_WIDTH-1]}}, w00_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p01 = {{1{w01_px[DATA_WIDTH-1]}}, w01_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p02 = {{1{w02_px[DATA_WIDTH-1]}}, w02_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p03 = {{1{w03_px[DATA_WIDTH-1]}}, w03_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p04 = {{1{w04_px[DATA_WIDTH-1]}}, w04_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p10 = {{1{w10_px[DATA_WIDTH-1]}}, w10_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p11 = {{1{w11_px[DATA_WIDTH-1]}}, w11_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p12 = {{1{w12_px[DATA_WIDTH-1]}}, w12_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p13 = {{1{w13_px[DATA_WIDTH-1]}}, w13_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p14 = {{1{w14_px[DATA_WIDTH-1]}}, w14_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p20 = {{1{w20_px[DATA_WIDTH-1]}}, w20_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p21 = {{1{w21_px[DATA_WIDTH-1]}}, w21_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p22 = {{1{w22_px[DATA_WIDTH-1]}}, w22_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p23 = {{1{w23_px[DATA_WIDTH-1]}}, w23_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p24 = {{1{w24_px[DATA_WIDTH-1]}}, w24_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p30 = {{1{w30_px[DATA_WIDTH-1]}}, w30_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p31 = {{1{w31_px[DATA_WIDTH-1]}}, w31_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p32 = {{1{w32_px[DATA_WIDTH-1]}}, w32_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p33 = {{1{w33_px[DATA_WIDTH-1]}}, w33_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p34 = {{1{w34_px[DATA_WIDTH-1]}}, w34_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p40 = {{1{w40_px[DATA_WIDTH-1]}}, w40_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p41 = {{1{w41_px[DATA_WIDTH-1]}}, w41_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p42 = {{1{w42_px[DATA_WIDTH-1]}}, w42_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p43 = {{1{w43_px[DATA_WIDTH-1]}}, w43_px};
+    wire signed [PE_PIXEL_WIDTH-1:0] p44 = {{1{w44_px[DATA_WIDTH-1]}}, w44_px};
 
     // ===============================================
     // 3. PE instance
@@ -85,6 +85,7 @@ module conv_accelerator #(
     conv_pe_5x5 #(
         .PIXEL_WIDTH  (PE_PIXEL_WIDTH),
         .WEIGHT_WIDTH (WEIGHT_WIDTH),
+        .BIAS_WIDTH   (32),
         .OUT_WIDTH    (OUT_WIDTH)
     ) u_pe (
         .clk        (clk),

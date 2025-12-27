@@ -24,7 +24,7 @@ from models import get_model, get_model_info, list_models, MODEL_REGISTRY
 # 配置
 BATCH_SIZE = 1024
 EPOCHS = 10
-DATA_DIR = "./data"
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 LOG_DIR = "./logs"
 MODELS_DIR = "./trained_models"  # 保存训练好的模型
 

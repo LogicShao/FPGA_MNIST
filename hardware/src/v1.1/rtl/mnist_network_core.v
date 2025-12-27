@@ -17,7 +17,22 @@ module mnist_network_core(
     wire [31:0] l1_ch5;
     wire l1_valid;
 
-    wire [31:0] l2_data;
+    wire [31:0] l2_ch0;
+    wire [31:0] l2_ch1;
+    wire [31:0] l2_ch2;
+    wire [31:0] l2_ch3;
+    wire [31:0] l2_ch4;
+    wire [31:0] l2_ch5;
+    wire [31:0] l2_ch6;
+    wire [31:0] l2_ch7;
+    wire [31:0] l2_ch8;
+    wire [31:0] l2_ch9;
+    wire [31:0] l2_ch10;
+    wire [31:0] l2_ch11;
+    wire [31:0] l2_ch12;
+    wire [31:0] l2_ch13;
+    wire [31:0] l2_ch14;
+    wire [31:0] l2_ch15;
     wire l2_valid;
 
     wire [31:0] l3_data;
@@ -50,7 +65,22 @@ module mnist_network_core(
         .in_ch3   (l1_ch3),
         .in_ch4   (l1_ch4),
         .in_ch5   (l1_ch5),
-        .out_data (l2_data),
+        .out_ch0  (l2_ch0),
+        .out_ch1  (l2_ch1),
+        .out_ch2  (l2_ch2),
+        .out_ch3  (l2_ch3),
+        .out_ch4  (l2_ch4),
+        .out_ch5  (l2_ch5),
+        .out_ch6  (l2_ch6),
+        .out_ch7  (l2_ch7),
+        .out_ch8  (l2_ch8),
+        .out_ch9  (l2_ch9),
+        .out_ch10 (l2_ch10),
+        .out_ch11 (l2_ch11),
+        .out_ch12 (l2_ch12),
+        .out_ch13 (l2_ch13),
+        .out_ch14 (l2_ch14),
+        .out_ch15 (l2_ch15),
         .out_valid(l2_valid)
     );
 
@@ -58,7 +88,22 @@ module mnist_network_core(
         .clk      (clk),
         .rst_n    (rst_n),
         .valid_in (l2_valid),
-        .in_data  (l2_data),
+        .in_ch0   (l2_ch0),
+        .in_ch1   (l2_ch1),
+        .in_ch2   (l2_ch2),
+        .in_ch3   (l2_ch3),
+        .in_ch4   (l2_ch4),
+        .in_ch5   (l2_ch5),
+        .in_ch6   (l2_ch6),
+        .in_ch7   (l2_ch7),
+        .in_ch8   (l2_ch8),
+        .in_ch9   (l2_ch9),
+        .in_ch10  (l2_ch10),
+        .in_ch11  (l2_ch11),
+        .in_ch12  (l2_ch12),
+        .in_ch13  (l2_ch13),
+        .in_ch14  (l2_ch14),
+        .in_ch15  (l2_ch15),
         .out_data (l3_data),
         .out_valid(l3_valid)
     );
