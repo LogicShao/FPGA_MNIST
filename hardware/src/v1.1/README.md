@@ -53,8 +53,7 @@ python model_tools/export_test_img.py --normalize --quant-params model_tools/qua
 
 4) Python 参考推理（结果应与 RTL 一致）：
 
-python model_tools/hw_ref.py --image hardware/src/v1.1/tb/test_image.mem --weights hardware/src/v1.1/rtl/weights --quant-
-params model_tools/quant_params.json
+python model_tools/hw_ref.py --image hardware/src/v1.1/tb/test_image.mem --weights hardware/src/v1.1/rtl/weights --quant-params model_tools/quant_params.json
 
 
 ### 3.2 运行 RTL 仿真
