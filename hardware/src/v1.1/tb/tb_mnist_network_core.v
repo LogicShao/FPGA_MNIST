@@ -67,10 +67,12 @@ module tb_mnist_network_core;
     end
 
     initial begin
+`ifndef QUIET_SIM
         $dumpfile("tb_mnist_network_core.vcd");
         $dumpvars(0, dut);
         $dumpvars(0, clk, rst_n, valid_in, pixel_in, result, result_valid);
         $dumpoff;
+`endif
 
         clk = 0;
         rst_n = 0;
@@ -106,7 +108,9 @@ module tb_mnist_network_core;
         if (idx >= MAX_WARMUP) begin
             $display("WARN: weight load timeout after %0d cycles", MAX_WARMUP);
         end
+`ifndef QUIET_SIM
         $dumpon;
+`endif
 
         for (idx = 0; idx < FEED_PIXELS; idx = idx + 1) begin
             @(negedge clk);
@@ -120,6 +124,7 @@ module tb_mnist_network_core;
 
         wait (output_count == OUT_PIXELS);
         #40;
+`ifndef QUIET_SIM
         $display("Pool1 (first 4 positions, ch0..5):");
         for (idx = 0; idx < 4; idx = idx + 1) begin
             $display("  pos%0d: %0d %0d %0d %0d %0d %0d",
@@ -147,6 +152,7 @@ module tb_mnist_network_core;
         for (idx = 0; idx < OUT_PIXELS; idx = idx + 1) begin
             $display("  [%0d] = %0d (0x%08h)", idx, out_vec[idx], out_vec[idx]);
         end
+`endif
         max_val = out_vec[0];
         max_idx = 0;
         for (idx = 1; idx < OUT_PIXELS; idx = idx + 1) begin
@@ -157,7 +163,9 @@ module tb_mnist_network_core;
         end
         $display("PRED = %0d (max=%0d)", max_idx, max_val);
         $display("PASS: %0d outputs checked", OUT_PIXELS);
+`ifndef QUIET_SIM
         $dumpoff;
+`endif
         $finish;
     end
 
@@ -226,6 +234,7 @@ module tb_mnist_network_core;
 
     always @(posedge clk) begin
         sim_cycles <= sim_cycles + 1;
+`ifndef QUIET_SIM
         if ((sim_cycles % 50000) == 0) begin
             $display("T=%0t rst_n=%b l1=%0d l2=%0d l3=%0d l4=%0d vin=%0d l1v=%0d l2v=%0d l3v=%0d l4v=%0d",
                      $time, rst_n,
@@ -235,6 +244,7 @@ module tb_mnist_network_core;
                      dut.u_layer4.load_state,
                      vin_count, l1_count, l2_count, l3_count, l4_count);
         end
+`endif
         if (sim_cycles >= MAX_SIM_CYCLES) begin
             $display("TIMEOUT after %0d cycles, outputs=%0d vin=%0d l1v=%0d l2v=%0d l3v=%0d l4v=%0d",
                      sim_cycles, output_count, vin_count, l1_count, l2_count, l3_count, l4_count);

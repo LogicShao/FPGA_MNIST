@@ -50,3 +50,4 @@ __pycache__/
 *.out
 *.vcd
 *.fst
+*.csv

@@ -63,6 +63,7 @@ def main():
     )
     parser.add_argument("--no-wave", action="store_true", help="Skip opening GTKWave")
     parser.add_argument("--fast", action="store_true", help="Enable FAST_SIM shortcuts")
+    parser.add_argument("--quiet", action="store_true", help="Reduce TB prints and disable wave dump")
     args = parser.parse_args()
 
     tb_path, tb_module = resolve_tb_path(args.tb)
@@ -82,9 +83,10 @@ def main():
     lib_flags = " ".join(f'-y "{d}"' for d in rtl_dirs)
     extra_sources = " ".join(f'"{p}"' for p in collect_extra_sources(RTL_DIR))
     fast_flag = "-DFAST_SIM" if args.fast else ""
+    quiet_flag = "-DQUIET_SIM" if args.quiet else ""
     out_file = os.path.join(SIM_DIR, f"{tb_module}.out")
     compile_cmd = (
-        f'iverilog -g2012 {fast_flag} -o "{out_file}" {inc_flags} {lib_flags} '
+        f'iverilog -g2012 {fast_flag} {quiet_flag} -o "{out_file}" {inc_flags} {lib_flags} '
         f'{extra_sources} "{tb_path}"'
     )
     run_command(compile_cmd, cwd=BASE_DIR)

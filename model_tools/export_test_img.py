@@ -7,7 +7,7 @@ from torchvision import datasets, transforms
 import numpy as np
 
 
-def export_image_header(output_path, mem_path=None, normalize=False, quant_params=None):
+def export_image_header(output_path, mem_path=None, normalize=False, quant_params=None, index=0):
     # Load test set
     data_dir = os.path.join(os.path.dirname(__file__), "data")
     dataset = datasets.MNIST(
@@ -17,9 +17,8 @@ def export_image_header(output_path, mem_path=None, normalize=False, quant_param
         transform=transforms.Compose([transforms.ToTensor()])
     )
 
-    # Pick a sample image (default: idx 0)
-    idx = 0
-    img, label = dataset[idx]  # img is (1, 28, 28) float 0~1
+    # Pick a sample image
+    img, label = dataset[index]  # img is (1, 28, 28) float 0~1
 
     img_f = img.numpy().squeeze()
     if normalize:
@@ -36,7 +35,7 @@ def export_image_header(output_path, mem_path=None, normalize=False, quant_param
     img_int8 = np.clip(np.round(img_f * scale), -128, 127).astype(np.int8)
     flat_img = img_int8.flatten()
 
-    print(f"Exporting image idx {idx}, label: {label}")
+    print(f"Exporting image idx {index}, label: {label}")
 
     # Generate C header content
     content = "#ifndef TEST_IMAGE_H\n#define TEST_IMAGE_H\n\n"
@@ -84,6 +83,12 @@ if __name__ == "__main__":
         default=None,
         help="Use s_in from quant_params.json for input scaling.",
     )
+    parser.add_argument(
+        "--index",
+        type=int,
+        default=0,
+        help="MNIST test image index (0-9999).",
+    )
     args = parser.parse_args()
 
-    export_image_header(args.output, args.mem, args.normalize, args.quant_params)
+    export_image_header(args.output, args.mem, args.normalize, args.quant_params, args.index)
