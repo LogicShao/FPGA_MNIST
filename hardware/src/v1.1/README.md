@@ -117,7 +117,39 @@ python model_tools/send_image.py
 - 脚本会按 `quant_params.json` 进行 normalize + s_in 量化
 - FPGA UART 回传结果与 `hw_ref.py` 对照
 
-### 5.3 常见问题排查
+### 5.3 UART 输出格式（含推理时间）
+
+每张图像推理完成后，UART 输出 **14 字节**：
+
+- Byte[0..9]：FC2 的 10 个输出（每个取低 8 位，按通道顺序 0..9）
+- Byte[10..13]：推理耗时的周期计数（`inf_cycles`，小端序 LSB first）
+
+**推理时间定义**：从接收第 1 个像素（`rx_valid` 第一次拉高）到最后一个输出有效（第 10 次 `net_valid`）的周期数。
+
+若需要换算为时间：
+```
+latency_us = inf_cycles / (CLK_FREQ / 1_000_000)
+```
+
+如果你希望统计“纯计算时间”（不含 UART 传输），可以改成在 **收到第 784 个像素后**开始计时。
+
+#### 5.3.1 计时与串口打包模块（inference_tx_timer）
+
+为保持顶层简洁，计时与 UART 打包逻辑封装在：
+`hardware/src/v1.1/rtl/inference_tx_timer.v`
+
+模块接口（关键端口）：
+- `rx_valid`：输入像素有效，计时起点触发
+- `net_valid`/`net_result`：网络输出有效与数据
+- `tx_data`/`tx_flag`：输出到 `uart_tx`
+
+工作流程：
+1) 侦测第 1 个 `rx_valid`，启动周期计数  
+2) 缓存 10 个输出（`net_valid` 累计 10 次）  
+3) 输出 10 字节结果 + 4 字节周期数  
+4) 发送完成后清理状态，等待下一张图
+
+### 5.4 常见问题排查
 
 - UART 无返回：检查 `SERIAL_PORT` / `BAUD_RATE` / 接线
 - 预测不一致：确认 `quant_params.json` 与权重匹配

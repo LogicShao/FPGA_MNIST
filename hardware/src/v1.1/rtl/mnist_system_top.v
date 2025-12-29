@@ -13,6 +13,9 @@ module mnist_system_top(
     output stcp
 );
 
+    localparam integer UART_BPS = 115200;
+    localparam integer CLK_FREQ = 50_000_000;
+
     // ==========================================
     // 1. Internal signals
     // ==========================================
@@ -23,6 +26,9 @@ module mnist_system_top(
     wire        net_valid;
 
     reg [3:0] display_num;
+
+    wire [7:0] tx_data;
+    wire       tx_flag;
 
     // ==========================================
     // 2. Result latch for display
@@ -35,12 +41,13 @@ module mnist_system_top(
         end
     end
 
+
     // ==========================================
     // 3. UART RX
     // ==========================================
     uart_rx #(
-        .UART_BPS(115200),
-        .CLK_FREQ(50_000_000)
+        .UART_BPS(UART_BPS),
+        .CLK_FREQ(CLK_FREQ)
     ) u_rx (
         .sys_clk   (sys_clk),
         .sys_rst_n (sys_rst_n),
@@ -62,16 +69,33 @@ module mnist_system_top(
     );
 
     // ==========================================
-    // 5. UART TX
+    // 5. Inference timer + UART payload formatter
     // ==========================================
+    inference_tx_timer #(
+        .UART_BPS (UART_BPS),
+        .CLK_FREQ (CLK_FREQ)
+    ) u_timer_tx (
+        .clk        (sys_clk),
+        .rst_n      (sys_rst_n),
+        .rx_valid   (rx_valid),
+        .net_result (net_result),
+        .net_valid  (net_valid),
+        .tx_data    (tx_data),
+        .tx_flag    (tx_flag)
+    );
+
+    // ==========================================
+    // 6. UART TX
+    // ==========================================
+
     uart_tx #(
-        .UART_BPS(115200),
-        .CLK_FREQ(50_000_000)
+        .UART_BPS(UART_BPS),
+        .CLK_FREQ(CLK_FREQ)
     ) u_tx (
         .sys_clk   (sys_clk),
         .sys_rst_n (sys_rst_n),
-        .pi_data   (net_result[7:0]),
-        .pi_flag   (net_valid),
+        .pi_data   (tx_data),
+        .pi_flag   (tx_flag),
         .tx        (uart_tx)
     );
 
