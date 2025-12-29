@@ -1,0 +1,13 @@
+﻿# Normalize line endings to LF and enforce UTF-8 for text files
+* text=auto eol=lf
+*.md text eol=lf working-tree-encoding=UTF-8
+*.py text eol=lf working-tree-encoding=UTF-8
+*.v text eol=lf working-tree-encoding=UTF-8
+*.sv text eol=lf working-tree-encoding=UTF-8
+*.vh text eol=lf working-tree-encoding=UTF-8
+*.txt text eol=lf working-tree-encoding=UTF-8
+*.mem text eol=lf working-tree-encoding=UTF-8
+*.json text eol=lf working-tree-encoding=UTF-8
+*.csv text eol=lf working-tree-encoding=UTF-8
+*.c text eol=lf working-tree-encoding=UTF-8
+*.h text eol=lf working-tree-encoding=UTF-8

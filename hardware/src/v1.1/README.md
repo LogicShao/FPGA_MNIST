@@ -1,14 +1,14 @@
-﻿# 项目文档：FPGA MNIST 手写数字识别加速器 (v1.1)
+﻿# 项目文档：FPGA_MNIST 手写数字识别加速器 (v1.1)
 
-**版本状态**：`Draft / In-Progress`  
-**目标**：纯 Verilog 端到端推理路径（UART -> 推理 -> 结果输出），不依赖 Nios II  
+**版本状态**：`Completed / Pure Verilog`  
+**目标**：纯 Verilog 端到端推理路径（UART -> 推理 -> 结果输出）。NIOS II 版本仅为早期测试验证。  
 **预期提升**：通过流水线提升吞吐率，降低推理延迟
 
 ---
 
 ## 1. 系统架构概览 (System Architecture)
 
-v1.1 采用纯 RTL 架构，数据从 PC 通过 UART 进入 FPGA，推理结果回传并显示。
+v1.1 采用纯 RTL 架构，数据从 PC 通过 UART 进入 FPGA，推理结果回传并显示。该版本不依赖 Nios II。 
 
 - **数据输入 (UART RX)**：PC 发送 28x28 像素流（每字节 1 像素）
 - **计算层 (RTL)**：line buffer 生成 5x5 窗口，PE 并行计算，池化/全连接等
