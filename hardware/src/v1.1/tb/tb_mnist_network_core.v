@@ -170,6 +170,19 @@ module tb_mnist_network_core;
                      conv1_stream[idx][0], conv1_stream[idx][1], conv1_stream[idx][2],
                      conv1_stream[idx][3], conv1_stream[idx][4], conv1_stream[idx][5]);
         end
+        $display("Conv1 (row0/1 col14..19, pos14..19, pos38..43):");
+        for (idx = 14; idx < 20; idx = idx + 1) begin
+            $display("  pos%0d: %0d %0d %0d %0d %0d %0d",
+                     idx,
+                     conv1_stream[idx][0], conv1_stream[idx][1], conv1_stream[idx][2],
+                     conv1_stream[idx][3], conv1_stream[idx][4], conv1_stream[idx][5]);
+        end
+        for (idx = 38; idx < 44; idx = idx + 1) begin
+            $display("  pos%0d: %0d %0d %0d %0d %0d %0d",
+                     idx,
+                     conv1_stream[idx][0], conv1_stream[idx][1], conv1_stream[idx][2],
+                     conv1_stream[idx][3], conv1_stream[idx][4], conv1_stream[idx][5]);
+        end
         $display("Conv1 biases:");
         $display("  %0d %0d %0d %0d %0d %0d",
                  dut.u_layer1.conv1_bias_ch0,

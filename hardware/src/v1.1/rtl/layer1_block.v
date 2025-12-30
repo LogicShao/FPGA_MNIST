@@ -147,10 +147,8 @@ module layer1_block(
     localparam C1_OUT  = 2'd3;
     reg [1:0] c1_state;
 
-    wire [2:0] k_x_rev = 3'd4 - k_x;
-    wire [2:0] k_y_rev = 3'd4 - k_y;
-    wire [5:0] k_y_5 = {k_y_rev, 2'b0} + k_y_rev;
-    wire [5:0] k_flat = k_y_5 + k_x_rev;
+    wire [5:0] k_y_5 = {k_y, 2'b0} + k_y;
+    wire [5:0] k_flat = k_y_5 + k_x;
     wire [7:0] oc_idx_ext = {5'd0, oc_idx};
     wire [7:0] oc25 = (oc_idx_ext << 4) + (oc_idx_ext << 3) + oc_idx_ext;
     assign conv1_weight_addr = oc25 + {3'd0, k_flat};
@@ -178,7 +176,10 @@ module layer1_block(
     always @(posedge clk) begin
         if (img_wr_en)
             img_mem[img_wr_addr] <= img_wr_data;
-        img_rd_data <= img_mem[img_rd_addr];
+    end
+
+    always @(*) begin
+        img_rd_data = img_mem[img_rd_addr];
     end
 
     always @(posedge clk or negedge rst_n) begin

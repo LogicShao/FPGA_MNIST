@@ -170,10 +170,8 @@ module layer2_block(
                          feat_rd_data5;
 
     wire [7:0] k_ch_25 = {k_ch, 4'b0} + {k_ch, 3'b0} + k_ch;
-    wire [2:0] k_x_rev = 3'd4 - k_x;
-    wire [2:0] k_y_rev = 3'd4 - k_y;
-    wire [7:0] k_y_5 = {k_y_rev, 2'b0} + k_y_rev;
-    wire [7:0] k_flat = k_ch_25 + k_y_5 + k_x_rev;
+    wire [7:0] k_y_5 = {k_y, 2'b0} + k_y;
+    wire [7:0] k_flat = k_ch_25 + k_y_5 + k_x;
     wire [11:0] oc_idx_ext = {8'd0, oc_idx};
     wire [11:0] oc150 = (oc_idx_ext << 7) + (oc_idx_ext << 4) + (oc_idx_ext << 2) + (oc_idx_ext << 1);
     assign conv2_weight_addr = oc150 + {4'd0, k_flat};

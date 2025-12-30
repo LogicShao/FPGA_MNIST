@@ -135,6 +135,7 @@ def infer_one(img, w1, w2, w3, w4, b1, b2, b3, b4, quant=None, dump=False):
                 acc = np.sum(patch * k) + int(b1[oc])
                 out1[oc, y, x] = relu_trunc32(acc)
 
+    out1_q = None
     if quant:
         mult = quant["effective"]["conv1"]["mult"]
         shift = quant["shift"]
@@ -148,17 +149,39 @@ def infer_one(img, w1, w2, w3, w4, b1, b2, b3, b4, quant=None, dump=False):
         pool1 = out1.reshape(6, 12, 2, 12, 2).max(axis=(2, 4))
 
     if dump:
-        print("Pool1 (first 4 positions, ch0..5):")
+        if out1_q is not None:
+            print("Conv1 q (row2 col0..7, ch0..5):")
+            for x in range(8):
+                vals = [int(out1_q[ch, 2, x]) for ch in range(6)]
+                print(f"  pos{48 + x}: " + " ".join(str(v) for v in vals))
+            print("Conv1 q (row3 col2..3, ch0..5):")
+            for x in range(2, 4):
+                vals = [int(out1_q[ch, 3, x]) for ch in range(6)]
+                idx = 3 * 24 + x
+                print(f"  pos{idx}: " + " ".join(str(v) for v in vals))
+            print("Conv1 q (row0/1 col14..19, ch0..5):")
+            for y in range(2):
+                for x in range(14, 20):
+                    vals = [int(out1_q[ch, y, x]) for ch in range(6)]
+                    idx = y * 24 + x
+                    print(f"  pos{idx}: " + " ".join(str(v) for v in vals))
+        print("Pool1 (first 16 positions, ch0..5):")
         pos_idx = 0
         for y in range(12):
             for x in range(12):
-                if pos_idx >= 4:
+                if pos_idx >= 16:
                     break
                 vals = [int(pool1[ch, y, x]) for ch in range(6)]
                 print(f"  pos{pos_idx}: " + " ".join(str(v) for v in vals))
                 pos_idx += 1
-            if pos_idx >= 4:
+            if pos_idx >= 16:
                 break
+        print("Pool1 window (pos0, 5x5) ch0..5:")
+        for ch in range(6):
+            print(f"  ch{ch}:")
+            for y in range(5):
+                row = [int(pool1[ch, y, x]) for x in range(5)]
+                print("   " + " ".join(str(v) for v in row))
 
     out2 = np.zeros((16, 8, 8), dtype=np.int32)
     for oc in range(16):
@@ -182,6 +205,9 @@ def infer_one(img, w1, w2, w3, w4, b1, b2, b3, b4, quant=None, dump=False):
         pool2 = out2.reshape(16, 4, 2, 4, 2).max(axis=(2, 4))
 
     if dump:
+        print("Conv2 out (pos0, pre-quant):")
+        vals = [int(out2[ch, 0, 0]) for ch in range(16)]
+        print("  " + " ".join(str(v) for v in vals))
         if quant:
             print("Conv2 q (first 4 positions, ch0..15):")
             pos_idx = 0

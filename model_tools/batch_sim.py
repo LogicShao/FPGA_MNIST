@@ -5,6 +5,7 @@ import json
 import os
 import re
 import subprocess
+import shutil
 import sys
 
 import numpy as np
@@ -59,6 +60,16 @@ def main():
     parser.add_argument("--quant-params", default="model_tools/quant_params.json", help="Quant params JSON.")
     parser.add_argument("--fast", action="store_true", help="Enable FAST_SIM shortcuts.")
     parser.add_argument("--quiet", action="store_true", help="Suppress verbose TB outputs.")
+    parser.add_argument(
+        "--debug-mismatch",
+        action="store_true",
+        help="On first mismatch, run verbose RTL sim and hw_ref and save logs.",
+    )
+    parser.add_argument(
+        "--debug-dir",
+        default="model_tools/batch_sim_debug",
+        help="Directory for mismatch debug logs.",
+    )
     args = parser.parse_args()
 
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -78,6 +89,7 @@ def main():
 
     out_file = os.path.join(sim_base, "sim", "tb_mnist_network_core.out")
     compiled = False
+    debug_done = False
     with open(args.out, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["index", "label", "pred", "match"])
@@ -125,6 +137,43 @@ def main():
             total += 1
             correct += match
             print(f"[{idx}] label={label} pred={pred} match={match}")
+
+            if args.debug_mismatch and (not debug_done) and match == 0:
+                debug_done = True
+                debug_dir = os.path.abspath(args.debug_dir)
+                os.makedirs(debug_dir, exist_ok=True)
+                sim_log = os.path.join(debug_dir, f"idx_{idx}_sim.log")
+                ref_log = os.path.join(debug_dir, f"idx_{idx}_hw_ref.log")
+
+                cmd_sim = (
+                    "python hardware/src/v1.1/script/run_sim.py "
+                    "--tb tb_mnist_network_core --no-wave"
+                )
+                code, sim_out = run_cmd(cmd_sim, cwd=repo_root)
+                with open(sim_log, "w", encoding="utf-8") as log_f:
+                    log_f.write(f"index={idx} label={label} pred={pred}\n")
+                    log_f.write(sim_out)
+
+                cmd_ref = (
+                    "python model_tools/hw_ref.py "
+                    "--image hardware/src/v1.1/tb/test_image.mem "
+                    "--weights hardware/src/v1.1/rtl/weights"
+                )
+                if args.quant_params:
+                    cmd_ref += f' --quant-params "{args.quant_params}"'
+                code, ref_out = run_cmd(cmd_ref, cwd=repo_root)
+                with open(ref_log, "w", encoding="utf-8") as log_f:
+                    log_f.write(f"index={idx} label={label} pred={pred}\n")
+                    log_f.write(ref_out)
+
+                mem_src = os.path.join(repo_root, "hardware", "src", "v1.1", "tb", "test_image.mem")
+                mem_dst = os.path.join(debug_dir, f"idx_{idx}_test_image.mem")
+                if os.path.exists(mem_src):
+                    shutil.copyfile(mem_src, mem_dst)
+                    print(f"Debug image saved: {mem_dst}")
+
+                print(f"Debug logs written: {sim_log}")
+                print(f"Debug logs written: {ref_log}")
 
         if total:
             acc = correct / total * 100.0
