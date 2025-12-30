@@ -72,6 +72,39 @@ python hardware/src/v1.1/script/run_sim.py --tb tb_mnist_network_core --no-wave
 python hardware/src/v1.1/script/run_sim.py --tb tb_mnist_network_core --no-wave --quiet
 ```
 
+### 3.3 对齐校验（RTL vs Python）
+
+目的：确认 RTL 与 `hw_ref.py` 在同一张输入下 **层级一致**。
+
+1) Python 参考（批量，建议先 200 张）：
+```
+python model_tools/hw_ref.py --batch --count 200 --normalize --quant-params model_tools/quant_params.json --data-dir model_tools/data
+```
+预期：准确率接近训练模型（当前一组参数下为 `199/200 = 99.50%`）。
+
+2) RTL 批量（小批量先验证）：
+```
+python model_tools/batch_sim.py --count 20 --normalize --quant-params model_tools/quant_params.json --quiet
+```
+预期：与 `hw_ref` 一致（当前对齐结果为 `20/20 = 100%`）。
+
+3) 若出现 mismatch，启用自动抓取日志：
+```
+python model_tools/batch_sim.py --count 20 --normalize --quant-params model_tools/quant_params.json --quiet --debug-mismatch
+```
+会生成：
+- `model_tools/batch_sim_debug/idx_<n>_sim.log`
+- `model_tools/batch_sim_debug/idx_<n>_hw_ref.log`
+- `model_tools/batch_sim_debug/idx_<n>_test_image.mem`
+
+对比步骤：
+```
+copy model_tools/batch_sim_debug/idx_<n>_test_image.mem hardware/src/v1.1/tb/test_image.mem
+python hardware/src/v1.1/script/run_sim.py --tb tb_mnist_network_core --no-wave
+python model_tools/hw_ref.py --image hardware/src/v1.1/tb/test_image.mem --weights hardware/src/v1.1/rtl/weights --quant-params model_tools/quant_params.json
+```
+重点对比：Conv1/Pool1/Conv2 q/Pool2/FC1/FC2 的输出是否一致。
+
 ---
 
 ## 4. 批量仿真（测试集）
