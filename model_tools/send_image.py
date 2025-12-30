@@ -105,11 +105,11 @@ if __name__ == "__main__":
             break
 
         try:
-        if choice == "1":
-            idx_str = input("MNIST index (0-9999, default 0): ").strip()
-            idx = int(idx_str) if idx_str else 0
-            pixels, label = get_mnist_image(idx)
-            print(f"MNIST label: {label}")
+            if choice == "1":
+                idx_str = input("MNIST index (0-9999, default 0): ").strip()
+                idx = int(idx_str) if idx_str else 0
+                pixels, label = get_mnist_image(idx)
+                print(f"MNIST label: {label}")
             elif choice == "2":
                 path = input("Path to .npy: ").strip()
                 pixels, _ = load_npy_image(path)

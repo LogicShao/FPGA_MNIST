@@ -134,6 +134,7 @@ def write_verilog_rom(
     mem_filename: str,
     data_width: int,
     module_prefix: str,
+    ramstyle: Optional[str],
 ) -> None:
     depth = len(array_def.values)
     addr_width = max(1, (depth - 1).bit_length())
@@ -159,7 +160,10 @@ def write_verilog_rom(
         f.write("    input  wire [ADDR_WIDTH-1:0]   addr,\n")
         f.write("    output reg  signed [DATA_WIDTH-1:0] q\n")
         f.write(");\n\n")
-        f.write("    (* rom_style = \"block\" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];\n\n")
+        if ramstyle:
+            f.write(f"    (* ramstyle = \"{ramstyle}\" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];\n\n")
+        else:
+            f.write("    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];\n\n")
         f.write("    initial begin\n")
         f.write("        $readmemh(MEM_FILE, mem);\n")
         f.write("    end\n\n")
@@ -211,6 +215,11 @@ def main() -> int:
         help="Prefix for generated Verilog module names (default: rom_)",
     )
     parser.add_argument(
+        "--ramstyle",
+        default="M9K",
+        help="Quartus RAM style attribute value (default: M9K). Use '' or 'none' to omit.",
+    )
+    parser.add_argument(
         "--only",
         action="append",
         help="Only export specific arrays (repeat or comma-separated)",
@@ -255,6 +264,10 @@ def main() -> int:
 
     os.makedirs(args.out_dir, exist_ok=True)
 
+    ramstyle = args.ramstyle.strip()
+    if ramstyle.lower() == "none":
+        ramstyle = ""
+
     for a in arrays:
         if a.ctype not in TYPE_WIDTHS:
             raise ValueError(f"Unsupported type {a.ctype} for array {a.name}")
@@ -283,6 +296,7 @@ def main() -> int:
                 mem_filename,
                 width,
                 args.module_prefix,
+                ramstyle if ramstyle else None,
             )
 
     print(f"Exported {len(arrays)} array(s) to {args.out_dir}")

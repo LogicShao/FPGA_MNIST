@@ -7,14 +7,14 @@ module rom_FC1_WEIGHTS #(
     parameter integer ADDR_WIDTH = 13,
     parameter integer DATA_WIDTH = 8,
     parameter integer DEPTH = 8192,
-    parameter MEM_FILE = "rtl/weights/FC1_WEIGHTS.mem"
+    parameter MEM_FILE = "FC1_WEIGHTS.mem"
 ) (
     input  wire                    clk,
     input  wire [ADDR_WIDTH-1:0]   addr,
     output reg  signed [DATA_WIDTH-1:0] q
 );
 
-    (* rom_style = "block" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
+    (* ramstyle = "M9K" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
 
     initial begin
         $readmemh(MEM_FILE, mem);

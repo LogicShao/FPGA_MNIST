@@ -45,7 +45,7 @@ module layer4_fc2(
     rom_FC2_BIASES_INT32 #(
         .ADDR_WIDTH(4),
         .DATA_WIDTH(32),
-        .DEPTH(10),
+        .DEPTH(16),
         .MEM_FILE("rtl/weights/FC2_BIASES_INT32.mem")
     ) u_fc2_brom (
         .clk  (clk),

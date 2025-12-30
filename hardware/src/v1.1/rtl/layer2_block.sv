@@ -157,9 +157,9 @@ module layer2_block(
     localparam C_OUT  = 2'd3;
     reg [1:0] c_state;
 
-    wire [3:0] base_row = pos_y + k_y;
-    wire [3:0] base_col = pos_x + k_x;
-    wire [7:0] row12 = {base_row, 3'b0} + {base_row, 2'b0};
+    wire [3:0] base_row = {1'b0, pos_y} + {1'b0, k_y};
+    wire [3:0] base_col = {1'b0, pos_x} + {1'b0, k_x};
+    wire [7:0] row12 = {1'b0, base_row, 3'b0} + {2'b0, base_row, 2'b0};
     wire [7:0] in_index = row12 + base_col;
     wire signed [7:0] feat_val =
         (k_ch == 3'd0) ? feat_rd_data0 :
@@ -170,8 +170,10 @@ module layer2_block(
                          feat_rd_data5;
 
     wire [7:0] k_ch_25 = {k_ch, 4'b0} + {k_ch, 3'b0} + k_ch;
-    wire [7:0] k_y_5 = {k_y, 2'b0} + k_y;
-    wire [7:0] k_flat = k_ch_25 + k_y_5 + k_x;
+    wire [2:0] k_x_rev = 3'd4 - k_x;
+    wire [2:0] k_y_rev = 3'd4 - k_y;
+    wire [7:0] k_y_5 = {k_y_rev, 2'b0} + k_y_rev;
+    wire [7:0] k_flat = k_ch_25 + k_y_5 + k_x_rev;
     wire [11:0] oc_idx_ext = {8'd0, oc_idx};
     wire [11:0] oc150 = (oc_idx_ext << 7) + (oc_idx_ext << 4) + (oc_idx_ext << 2) + (oc_idx_ext << 1);
     assign conv2_weight_addr = oc150 + {4'd0, k_flat};
@@ -192,12 +194,15 @@ module layer2_block(
             feat_mem4[feat_wr_addr] <= feat_wr_data4;
             feat_mem5[feat_wr_addr] <= feat_wr_data5;
         end
-        feat_rd_data0 <= feat_mem0[feat_rd_addr];
-        feat_rd_data1 <= feat_mem1[feat_rd_addr];
-        feat_rd_data2 <= feat_mem2[feat_rd_addr];
-        feat_rd_data3 <= feat_mem3[feat_rd_addr];
-        feat_rd_data4 <= feat_mem4[feat_rd_addr];
-        feat_rd_data5 <= feat_mem5[feat_rd_addr];
+    end
+
+    always @(*) begin
+        feat_rd_data0 = feat_mem0[feat_rd_addr];
+        feat_rd_data1 = feat_mem1[feat_rd_addr];
+        feat_rd_data2 = feat_mem2[feat_rd_addr];
+        feat_rd_data3 = feat_mem3[feat_rd_addr];
+        feat_rd_data4 = feat_mem4[feat_rd_addr];
+        feat_rd_data5 = feat_mem5[feat_rd_addr];
     end
 
     always @(posedge clk or negedge rst_n) begin

@@ -10,7 +10,7 @@ module rom_CONV2_BIASES_INT32 #(
     output reg  signed [DATA_WIDTH-1:0] q
 );
 
-    (* rom_style = "block" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
+    (* ramstyle = "M9K" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
 
     initial begin
         $readmemh(MEM_FILE, mem);

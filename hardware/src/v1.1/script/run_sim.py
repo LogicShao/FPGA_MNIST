@@ -86,8 +86,8 @@ def main():
     quiet_flag = "-DQUIET_SIM" if args.quiet else ""
     out_file = os.path.join(SIM_DIR, f"{tb_module}.out")
     compile_cmd = (
-        f'iverilog -g2012 {fast_flag} {quiet_flag} -o "{out_file}" {inc_flags} {lib_flags} '
-        f'{extra_sources} "{tb_path}"'
+        f'iverilog -g2012 {fast_flag} {quiet_flag} -s "{tb_module}" -o "{out_file}" '
+        f'{inc_flags} {lib_flags} {extra_sources} "{tb_path}"'
     )
     run_command(compile_cmd, cwd=BASE_DIR)
     print("Compilation successful.")

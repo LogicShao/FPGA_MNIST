@@ -2,7 +2,7 @@
 module rom_CONV1_BIASES_INT32 #(
     parameter integer ADDR_WIDTH = 3,
     parameter integer DATA_WIDTH = 32,
-    parameter integer DEPTH = 6,
+    parameter integer DEPTH = 8,
     parameter MEM_FILE = "CONV1_BIASES_INT32.mem"
 ) (
     input  wire                    clk,
@@ -10,7 +10,7 @@ module rom_CONV1_BIASES_INT32 #(
     output reg  signed [DATA_WIDTH-1:0] q
 );
 
-    (* rom_style = "block" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
+    (* ramstyle = "M9K" *) reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
 
     initial begin
         $readmemh(MEM_FILE, mem);

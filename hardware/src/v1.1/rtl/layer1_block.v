@@ -61,7 +61,7 @@ module layer1_block(
     rom_CONV1_BIASES_INT32 #(
         .ADDR_WIDTH(3),
         .DATA_WIDTH(32),
-        .DEPTH(6),
+        .DEPTH(8),
         .MEM_FILE("rtl/weights/CONV1_BIASES_INT32.mem")
     ) u_conv1_brom (
         .clk  (clk),
@@ -147,7 +147,10 @@ module layer1_block(
     localparam C1_OUT  = 2'd3;
     reg [1:0] c1_state;
 
-    wire [4:0] k_flat = (k_y << 2) + k_y + k_x;
+    wire [2:0] k_x_rev = 3'd4 - k_x;
+    wire [2:0] k_y_rev = 3'd4 - k_y;
+    wire [5:0] k_y_5 = {k_y_rev, 2'b0} + k_y_rev;
+    wire [5:0] k_flat = k_y_5 + k_x_rev;
     wire [7:0] oc_idx_ext = {5'd0, oc_idx};
     wire [7:0] oc25 = (oc_idx_ext << 4) + (oc_idx_ext << 3) + oc_idx_ext;
     assign conv1_weight_addr = oc25 + {3'd0, k_flat};
@@ -163,7 +166,7 @@ module layer1_block(
 
     wire [5:0] base_row = pos_y + k_y;
     wire [5:0] base_col = pos_x + k_x;
-    wire [9:0] row28 = (base_row << 4) + (base_row << 3) + (base_row << 2);
+    wire [9:0] row28 = {base_row, 4'b0} + {base_row, 3'b0} + {base_row, 2'b0};
     wire [9:0] img_index = row28 + base_col;
     wire signed [7:0] img_val = img_rd_data;
     wire signed [15:0] prod = img_val * w_sel;
