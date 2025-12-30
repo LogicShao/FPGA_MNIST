@@ -121,16 +121,18 @@ module layer3_fc1(
     function automatic signed [7:0] quantize32;
         input signed [31:0] val;
         reg signed [63:0] prod;
+        reg signed [63:0] round_const;
         reg signed [63:0] rounded;
         reg signed [63:0] shifted;
         begin
             prod = val * $signed(`Q_MULT_FC1);
-            rounded = prod + $signed(1 << (`Q_SHIFT - 1));
+            round_const = 64'sd1 <<< (`Q_SHIFT - 1);
+            rounded = prod + round_const;
             shifted = rounded >>> `Q_SHIFT;
             if (shifted > 127)
                 quantize32 = 8'sd127;
             else if (shifted < -128)
-                quantize32 = -8'sd128;
+                quantize32 = 8'sh80;
             else
                 quantize32 = shifted[7:0];
         end
