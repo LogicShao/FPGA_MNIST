@@ -32,11 +32,11 @@ module tb_mnist_network_core;
     integer out_idx;
     reg signed [31:0] max_val;
     integer max_idx;
-    reg signed [31:0] fc1_vec [0:31];
+    reg signed [7:0] fc1_vec [0:31];
     integer fc1_idx;
-    reg signed [31:0] pool1_stream [0:15][0:5];
+    reg signed [7:0] pool1_stream [0:15][0:5];
     integer pool1_idx;
-    reg signed [31:0] pool2_stream [0:15][0:15];
+    reg signed [7:0] pool2_stream [0:15][0:15];
     integer pool2_idx;
 
     mnist_network_core dut (
@@ -69,8 +69,15 @@ module tb_mnist_network_core;
     initial begin
 `ifndef QUIET_SIM
         $dumpfile("tb_mnist_network_core.vcd");
+`ifdef FULL_DUMP
         $dumpvars(0, dut);
+`else
         $dumpvars(0, clk, rst_n, valid_in, pixel_in, result, result_valid);
+        $dumpvars(0, dut.u_layer1.result_valid, dut.u_layer2.out_valid,
+                  dut.u_layer3.out_valid, dut.u_layer4.out_valid);
+        $dumpvars(0, dut.u_layer1.load_state, dut.u_layer2.load_state,
+                  dut.u_layer3.load_state, dut.u_layer4.load_state);
+`endif
         $dumpoff;
 `endif
 
@@ -97,10 +104,10 @@ module tb_mnist_network_core;
 
         // Wait for all layer weight loaders to complete (with timeout)
         idx = 0;
-        while (!(dut.u_layer1.load_state == 2'd2 &&
-                 dut.u_layer2.load_state == 2'd2 &&
-                 dut.u_layer3.load_state == 2'd2 &&
-                 dut.u_layer4.load_state == 2'd2) &&
+        while (!(dut.u_layer1.load_state == 1'b1 &&
+                 dut.u_layer2.load_state == 1'b1 &&
+                 dut.u_layer3.load_state == 1'b1 &&
+                 dut.u_layer4.load_state == 1'b1) &&
                (idx < MAX_WARMUP)) begin
             @(posedge clk);
             idx = idx + 1;

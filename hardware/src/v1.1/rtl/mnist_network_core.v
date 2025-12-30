@@ -9,33 +9,33 @@ module mnist_network_core(
     output wire result_valid
 );
 
-    wire [31:0] l1_ch0;
-    wire [31:0] l1_ch1;
-    wire [31:0] l1_ch2;
-    wire [31:0] l1_ch3;
-    wire [31:0] l1_ch4;
-    wire [31:0] l1_ch5;
+    wire signed [7:0] l1_ch0;
+    wire signed [7:0] l1_ch1;
+    wire signed [7:0] l1_ch2;
+    wire signed [7:0] l1_ch3;
+    wire signed [7:0] l1_ch4;
+    wire signed [7:0] l1_ch5;
     wire l1_valid;
 
-    wire [31:0] l2_ch0;
-    wire [31:0] l2_ch1;
-    wire [31:0] l2_ch2;
-    wire [31:0] l2_ch3;
-    wire [31:0] l2_ch4;
-    wire [31:0] l2_ch5;
-    wire [31:0] l2_ch6;
-    wire [31:0] l2_ch7;
-    wire [31:0] l2_ch8;
-    wire [31:0] l2_ch9;
-    wire [31:0] l2_ch10;
-    wire [31:0] l2_ch11;
-    wire [31:0] l2_ch12;
-    wire [31:0] l2_ch13;
-    wire [31:0] l2_ch14;
-    wire [31:0] l2_ch15;
+    wire signed [7:0] l2_ch0;
+    wire signed [7:0] l2_ch1;
+    wire signed [7:0] l2_ch2;
+    wire signed [7:0] l2_ch3;
+    wire signed [7:0] l2_ch4;
+    wire signed [7:0] l2_ch5;
+    wire signed [7:0] l2_ch6;
+    wire signed [7:0] l2_ch7;
+    wire signed [7:0] l2_ch8;
+    wire signed [7:0] l2_ch9;
+    wire signed [7:0] l2_ch10;
+    wire signed [7:0] l2_ch11;
+    wire signed [7:0] l2_ch12;
+    wire signed [7:0] l2_ch13;
+    wire signed [7:0] l2_ch14;
+    wire signed [7:0] l2_ch15;
     wire l2_valid;
 
-    wire [31:0] l3_data;
+    wire signed [7:0] l3_data;
     wire l3_valid;
 
     wire [31:0] l4_data;

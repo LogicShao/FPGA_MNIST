@@ -8,61 +8,61 @@ module max_pool_2x2 #(
     input wire rst_n,
     input wire valid_in,
 
-    input wire signed [31:0] in_ch0,
-    input wire signed [31:0] in_ch1,
-    input wire signed [31:0] in_ch2,
-    input wire signed [31:0] in_ch3,
-    input wire signed [31:0] in_ch4,
-    input wire signed [31:0] in_ch5,
+    input wire signed [7:0] in_ch0,
+    input wire signed [7:0] in_ch1,
+    input wire signed [7:0] in_ch2,
+    input wire signed [7:0] in_ch3,
+    input wire signed [7:0] in_ch4,
+    input wire signed [7:0] in_ch5,
 
-    output reg signed [31:0] out_ch0,
-    output reg signed [31:0] out_ch1,
-    output reg signed [31:0] out_ch2,
-    output reg signed [31:0] out_ch3,
-    output reg signed [31:0] out_ch4,
-    output reg signed [31:0] out_ch5,
+    output reg signed [7:0] out_ch0,
+    output reg signed [7:0] out_ch1,
+    output reg signed [7:0] out_ch2,
+    output reg signed [7:0] out_ch3,
+    output reg signed [7:0] out_ch4,
+    output reg signed [7:0] out_ch5,
     output reg out_valid
 );
 
-    reg signed [31:0] linebuf_ch0 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch1 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch2 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch3 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch4 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch5 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch0 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch1 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch2 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch3 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch4 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch5 [0:IN_WIDTH-1];
 
-    reg signed [31:0] left_ch0;
-    reg signed [31:0] left_ch1;
-    reg signed [31:0] left_ch2;
-    reg signed [31:0] left_ch3;
-    reg signed [31:0] left_ch4;
-    reg signed [31:0] left_ch5;
+    reg signed [7:0] left_ch0;
+    reg signed [7:0] left_ch1;
+    reg signed [7:0] left_ch2;
+    reg signed [7:0] left_ch3;
+    reg signed [7:0] left_ch4;
+    reg signed [7:0] left_ch5;
 
-    reg signed [31:0] prev_row_left_ch0;
-    reg signed [31:0] prev_row_left_ch1;
-    reg signed [31:0] prev_row_left_ch2;
-    reg signed [31:0] prev_row_left_ch3;
-    reg signed [31:0] prev_row_left_ch4;
-    reg signed [31:0] prev_row_left_ch5;
+    reg signed [7:0] prev_row_left_ch0;
+    reg signed [7:0] prev_row_left_ch1;
+    reg signed [7:0] prev_row_left_ch2;
+    reg signed [7:0] prev_row_left_ch3;
+    reg signed [7:0] prev_row_left_ch4;
+    reg signed [7:0] prev_row_left_ch5;
 
     reg [5:0] col;
     reg [5:0] row;
 
     integer i;
 
-    function signed [31:0] max2;
-        input signed [31:0] a;
-        input signed [31:0] b;
+    function signed [7:0] max2;
+        input signed [7:0] a;
+        input signed [7:0] b;
         begin
             max2 = (a >= b) ? a : b;
         end
     endfunction
 
-    function signed [31:0] max4;
-        input signed [31:0] a;
-        input signed [31:0] b;
-        input signed [31:0] c;
-        input signed [31:0] d;
+    function signed [7:0] max4;
+        input signed [7:0] a;
+        input signed [7:0] b;
+        input signed [7:0] c;
+        input signed [7:0] d;
         begin
             max4 = max2(max2(a, b), max2(c, d));
         end

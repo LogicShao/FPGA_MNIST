@@ -1,4 +1,4 @@
-﻿# Normalize line endings to LF and enforce UTF-8 for text files
+# Normalize line endings to LF and enforce UTF-8 for text files
 * text=auto eol=lf
 *.md text eol=lf working-tree-encoding=UTF-8
 *.py text eol=lf working-tree-encoding=UTF-8

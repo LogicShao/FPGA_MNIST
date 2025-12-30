@@ -4,7 +4,7 @@ module layer4_fc2(
     input wire clk,
     input wire rst_n,
     input wire valid_in,
-    input wire [31:0] in_data,
+    input wire signed [7:0] in_data,
     output reg [31:0] out_data,
     output reg out_valid
 );
@@ -14,21 +14,15 @@ module layer4_fc2(
     wire signed [7:0] fc2_weight_q;
     wire signed [31:0] fc2_bias_q;
 
-    reg [8:0] fc2_weight_addr;
+    wire [8:0] fc2_weight_addr;
     reg [3:0] fc2_bias_addr;
 
-    reg signed [7:0] fc2_weights [0:319];
     reg signed [31:0] fc2_biases [0:9];
 
-    localparam LOAD_WEIGHTS = 2'd0;
-    localparam LOAD_BIAS    = 2'd1;
-    localparam LOAD_DONE    = 2'd2;
+    localparam LOAD_BIAS    = 1'd0;
+    localparam LOAD_DONE    = 1'd1;
 
-    reg [1:0] load_state;
-    reg [8:0] load_idx;
-    reg       load_capture;
-    reg [8:0] load_idx_d1;
-    reg       load_capture_d1;
+    reg        load_state;
 
     reg [3:0] bias_idx;
     reg       bias_capture;
@@ -61,41 +55,14 @@ module layer4_fc2(
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            fc2_weight_addr <= 9'd0;
             fc2_bias_addr <= 4'd0;
-            load_state <= LOAD_WEIGHTS;
-            load_idx <= 9'd0;
-            load_capture <= 1'b0;
-            load_idx_d1 <= 9'd0;
-            load_capture_d1 <= 1'b0;
+            load_state <= LOAD_BIAS;
             bias_idx <= 4'd0;
             bias_capture <= 1'b0;
             bias_idx_d1 <= 4'd0;
             bias_capture_d1 <= 1'b0;
         end else begin
             case (load_state)
-                LOAD_WEIGHTS: begin
-                    load_idx_d1 <= load_idx;
-                    load_capture_d1 <= load_capture;
-
-                    if (load_capture_d1 && load_idx_d1 != 0 && load_idx_d1 <= 9'd320) begin
-                        fc2_weights[load_idx_d1 - 1] <= fc2_weight_q;
-                    end
-                    if (load_idx < 320) begin
-                        fc2_weight_addr <= load_idx;
-                        load_idx <= load_idx + 1'b1;
-                        load_capture <= 1'b1;
-                    end else begin
-                        load_capture <= 1'b0;
-                        if (!load_capture_d1) begin
-                            load_state <= LOAD_BIAS;
-                            bias_idx <= 4'd0;
-                            bias_capture <= 1'b0;
-                            bias_idx_d1 <= 4'd0;
-                            bias_capture_d1 <= 1'b0;
-                        end
-                    end
-                end
                 LOAD_BIAS: begin
                     bias_idx_d1 <= bias_idx;
                     bias_capture_d1 <= bias_capture;
@@ -119,7 +86,7 @@ module layer4_fc2(
         end
     end
 
-    reg signed [31:0] fc1_buf [0:31];
+    reg signed [7:0] fc1_buf [0:31];
     reg signed [31:0] out_buf [0:9];
 
     localparam S_LOAD = 2'd0;
@@ -129,16 +96,24 @@ module layer4_fc2(
     reg [1:0] state;
     reg [5:0] in_idx;
     reg [3:0] out_idx;
+    reg [3:0] oc_idx;
+    reg signed [63:0] acc;
+    assign fc2_weight_addr = {oc_idx, in_idx[4:0]};
+    wire signed [63:0] fc2_prod = $signed(fc1_buf[in_idx]) * $signed(fc2_weight_q);
+    wire signed [63:0] fc2_acc_next = acc + fc2_prod;
+    wire signed [63:0] fc2_acc_bias = fc2_acc_next + $signed(fc2_biases[oc_idx]);
 
     integer oc;
-    integer i;
-    reg signed [63:0] acc;
+    reg mac_phase;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= S_LOAD;
             in_idx <= 6'd0;
             out_idx <= 4'd0;
+            oc_idx <= 4'd0;
+            acc <= 64'd0;
+            mac_phase <= 1'b0;
             out_data <= 0;
             out_valid <= 1'b0;
         end else begin
@@ -150,6 +125,9 @@ module layer4_fc2(
                         if (in_idx == 6'd31) begin
                             in_idx <= 6'd0;
                             state <= S_COMPUTE;
+                            oc_idx <= 4'd0;
+                            acc <= 64'd0;
+                            mac_phase <= 1'b0;
                         end else begin
                             in_idx <= in_idx + 1'b1;
                         end
@@ -161,18 +139,32 @@ module layer4_fc2(
                         for (oc = 0; oc < 10; oc = oc + 1) begin
                             out_buf[oc] <= fc1_buf[oc];
                         end
-`else
-                        for (oc = 0; oc < 10; oc = oc + 1) begin
-                            acc = 0;
-                            for (i = 0; i < 32; i = i + 1) begin
-                                acc = acc + $signed(fc1_buf[i]) * $signed(fc2_weights[oc * 32 + i]);
-                            end
-                            acc = acc + $signed(fc2_biases[oc]);
-                            out_buf[oc] <= acc[31:0];
-                        end
-`endif
                         out_idx <= 4'd0;
                         state <= S_OUTPUT;
+`else
+                        if (!mac_phase) begin
+                            mac_phase <= 1'b1;
+                        end else begin
+                            if (in_idx == 6'd31) begin
+                                out_buf[oc_idx] <= fc2_acc_bias[31:0];
+                                if (oc_idx == 4'd9) begin
+                                    oc_idx <= 4'd0;
+                                    in_idx <= 6'd0;
+                                    acc <= 64'd0;
+                                    out_idx <= 4'd0;
+                                    state <= S_OUTPUT;
+                                end else begin
+                                    oc_idx <= oc_idx + 1'b1;
+                                    in_idx <= 6'd0;
+                                    acc <= 64'd0;
+                                end
+                            end else begin
+                                acc <= fc2_acc_next;
+                                in_idx <= in_idx + 1'b1;
+                            end
+                            mac_phase <= 1'b0;
+                        end
+`endif
                     end
                 end
                 S_OUTPUT: begin

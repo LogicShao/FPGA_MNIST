@@ -5,28 +5,28 @@ module layer2_block(
     input wire clk,
     input wire rst_n,
     input wire valid_in,
-    input wire [31:0] in_ch0,
-    input wire [31:0] in_ch1,
-    input wire [31:0] in_ch2,
-    input wire [31:0] in_ch3,
-    input wire [31:0] in_ch4,
-    input wire [31:0] in_ch5,
-    output wire [31:0] out_ch0,
-    output wire [31:0] out_ch1,
-    output wire [31:0] out_ch2,
-    output wire [31:0] out_ch3,
-    output wire [31:0] out_ch4,
-    output wire [31:0] out_ch5,
-    output wire [31:0] out_ch6,
-    output wire [31:0] out_ch7,
-    output wire [31:0] out_ch8,
-    output wire [31:0] out_ch9,
-    output wire [31:0] out_ch10,
-    output wire [31:0] out_ch11,
-    output wire [31:0] out_ch12,
-    output wire [31:0] out_ch13,
-    output wire [31:0] out_ch14,
-    output wire [31:0] out_ch15,
+    input wire signed [7:0] in_ch0,
+    input wire signed [7:0] in_ch1,
+    input wire signed [7:0] in_ch2,
+    input wire signed [7:0] in_ch3,
+    input wire signed [7:0] in_ch4,
+    input wire signed [7:0] in_ch5,
+    output wire signed [7:0] out_ch0,
+    output wire signed [7:0] out_ch1,
+    output wire signed [7:0] out_ch2,
+    output wire signed [7:0] out_ch3,
+    output wire signed [7:0] out_ch4,
+    output wire signed [7:0] out_ch5,
+    output wire signed [7:0] out_ch6,
+    output wire signed [7:0] out_ch7,
+    output wire signed [7:0] out_ch8,
+    output wire signed [7:0] out_ch9,
+    output wire signed [7:0] out_ch10,
+    output wire signed [7:0] out_ch11,
+    output wire signed [7:0] out_ch12,
+    output wire signed [7:0] out_ch13,
+    output wire signed [7:0] out_ch14,
+    output wire signed [7:0] out_ch15,
     output wire out_valid
 );
 
@@ -36,21 +36,15 @@ module layer2_block(
     wire signed [7:0] conv2_weight_q;
     wire signed [31:0] conv2_bias_q;
 
-    reg [11:0] conv2_weight_addr;
+    wire [11:0] conv2_weight_addr;
     reg [3:0] conv2_bias_addr;
 
-    reg signed [7:0] conv2_weights [0:15][0:149];
     reg signed [31:0] conv2_biases [0:15];
 
-    localparam LOAD_WEIGHTS = 2'd0;
-    localparam LOAD_BIAS    = 2'd1;
-    localparam LOAD_DONE    = 2'd2;
+    localparam LOAD_BIAS    = 1'd0;
+    localparam LOAD_DONE    = 1'd1;
 
-    reg [1:0] load_state;
-    reg [11:0] load_idx;
-    reg        load_capture;
-    reg [11:0] load_idx_d1;
-    reg        load_capture_d1;
+    reg        load_state;
 
     reg [4:0] bias_idx;
     reg       bias_capture;
@@ -58,7 +52,6 @@ module layer2_block(
     reg       bias_capture_d1;
 
     wire weights_ready = (load_state == LOAD_DONE);
-    wire conv_valid_in = valid_in & weights_ready;
 
     integer i;
 
@@ -86,41 +79,14 @@ module layer2_block(
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            conv2_weight_addr <= 12'd0;
             conv2_bias_addr <= 4'd0;
-            load_state <= LOAD_WEIGHTS;
-            load_idx <= 12'd0;
-            load_capture <= 1'b0;
-            load_idx_d1 <= 12'd0;
-            load_capture_d1 <= 1'b0;
+            load_state <= LOAD_BIAS;
             bias_idx <= 5'd0;
             bias_capture <= 1'b0;
             bias_idx_d1 <= 5'd0;
             bias_capture_d1 <= 1'b0;
         end else begin
             case (load_state)
-                LOAD_WEIGHTS: begin
-                    load_idx_d1 <= load_idx;
-                    load_capture_d1 <= load_capture;
-
-                    if (load_capture_d1 && load_idx_d1 != 0 && load_idx_d1 <= 12'd2400) begin
-                        conv2_weights[(load_idx_d1 - 1) / 150][(load_idx_d1 - 1) % 150] <= conv2_weight_q;
-                    end
-                    if (load_idx < 2400) begin
-                        conv2_weight_addr <= load_idx;
-                        load_idx <= load_idx + 1'b1;
-                        load_capture <= 1'b1;
-                    end else begin
-                        load_capture <= 1'b0;
-                        if (!load_capture_d1) begin
-                            load_state <= LOAD_BIAS;
-                            bias_idx <= 5'd0;
-                            bias_capture <= 1'b0;
-                            bias_idx_d1 <= 5'd0;
-                            bias_capture_d1 <= 1'b0;
-                        end
-                    end
-                end
                 LOAD_BIAS: begin
                     bias_idx_d1 <= bias_idx;
                     bias_capture_d1 <= bias_capture;
@@ -145,169 +111,270 @@ module layer2_block(
     end
 
     // ==========================================
-    // 2. CONV2 core (16 channels)
+    // 2. CONV2 sequential core (16 channels, 1 MAC)
     // ==========================================
-    wire [31:0] conv2_ch0;
-    wire [31:0] conv2_ch1;
-    wire [31:0] conv2_ch2;
-    wire [31:0] conv2_ch3;
-    wire [31:0] conv2_ch4;
-    wire [31:0] conv2_ch5;
-    wire [31:0] conv2_ch6;
-    wire [31:0] conv2_ch7;
-    wire [31:0] conv2_ch8;
-    wire [31:0] conv2_ch9;
-    wire [31:0] conv2_ch10;
-    wire [31:0] conv2_ch11;
-    wire [31:0] conv2_ch12;
-    wire [31:0] conv2_ch13;
-    wire [31:0] conv2_ch14;
-    wire [31:0] conv2_ch15;
-    wire conv2_valid;
-    reg [31:0] conv2_ch0_r;
-    reg [31:0] conv2_ch1_r;
-    reg [31:0] conv2_ch2_r;
-    reg [31:0] conv2_ch3_r;
-    reg [31:0] conv2_ch4_r;
-    reg [31:0] conv2_ch5_r;
-    reg [31:0] conv2_ch6_r;
-    reg [31:0] conv2_ch7_r;
-    reg [31:0] conv2_ch8_r;
-    reg [31:0] conv2_ch9_r;
-    reg [31:0] conv2_ch10_r;
-    reg [31:0] conv2_ch11_r;
-    reg [31:0] conv2_ch12_r;
-    reg [31:0] conv2_ch13_r;
-    reg [31:0] conv2_ch14_r;
-    reg [31:0] conv2_ch15_r;
-    reg conv2_valid_r;
+    reg [7:0] feat_idx;
+    reg [2:0] pos_x;
+    reg [2:0] pos_y;
+    reg [3:0] oc_idx;
+    reg [2:0] k_ch;
+    reg [2:0] k_y;
+    reg [2:0] k_x;
+    reg signed [63:0] acc;
+    reg mac_phase;
 
-    conv2_core #(
-        .IMG_WIDTH(12),
-        .DATA_WIDTH(32),
-        .WEIGHT_WIDTH(8),
-        .OUT_WIDTH(32)
-    ) u_conv2 (
-        .clk        (clk),
-        .rst_n      (rst_n),
-        .valid_in   (conv_valid_in),
-        .in_ch0     (in_ch0),
-        .in_ch1     (in_ch1),
-        .in_ch2     (in_ch2),
-        .in_ch3     (in_ch3),
-        .in_ch4     (in_ch4),
-        .in_ch5     (in_ch5),
-        .weights    (conv2_weights),
-        .biases     (conv2_biases),
-        .result_ch0 (conv2_ch0),
-        .result_ch1 (conv2_ch1),
-        .result_ch2 (conv2_ch2),
-        .result_ch3 (conv2_ch3),
-        .result_ch4 (conv2_ch4),
-        .result_ch5 (conv2_ch5),
-        .result_ch6 (conv2_ch6),
-        .result_ch7 (conv2_ch7),
-        .result_ch8 (conv2_ch8),
-        .result_ch9 (conv2_ch9),
-        .result_ch10(conv2_ch10),
-        .result_ch11(conv2_ch11),
-        .result_ch12(conv2_ch12),
-        .result_ch13(conv2_ch13),
-        .result_ch14(conv2_ch14),
-        .result_ch15(conv2_ch15),
-        .result_valid(conv2_valid)
-    );
+    reg signed [31:0] conv2_out_buf [0:15];
+    reg conv2_valid;
+    reg conv2_valid_r;
+    reg signed [7:0] conv2_q_buf [0:15];
+    reg [3:0] q_idx;
+
+    (* ramstyle = "M9K" *) reg signed [7:0] feat_mem0 [0:143];
+    (* ramstyle = "M9K" *) reg signed [7:0] feat_mem1 [0:143];
+    (* ramstyle = "M9K" *) reg signed [7:0] feat_mem2 [0:143];
+    (* ramstyle = "M9K" *) reg signed [7:0] feat_mem3 [0:143];
+    (* ramstyle = "M9K" *) reg signed [7:0] feat_mem4 [0:143];
+    (* ramstyle = "M9K" *) reg signed [7:0] feat_mem5 [0:143];
+    reg [7:0] feat_wr_addr;
+    reg signed [7:0] feat_wr_data0;
+    reg signed [7:0] feat_wr_data1;
+    reg signed [7:0] feat_wr_data2;
+    reg signed [7:0] feat_wr_data3;
+    reg signed [7:0] feat_wr_data4;
+    reg signed [7:0] feat_wr_data5;
+    reg feat_wr_en;
+    reg [7:0] feat_rd_addr;
+    reg signed [7:0] feat_rd_data0;
+    reg signed [7:0] feat_rd_data1;
+    reg signed [7:0] feat_rd_data2;
+    reg signed [7:0] feat_rd_data3;
+    reg signed [7:0] feat_rd_data4;
+    reg signed [7:0] feat_rd_data5;
+
+    localparam C_IDLE = 2'd0;
+    localparam C_LOAD = 2'd1;
+    localparam C_MAC  = 2'd2;
+    localparam C_OUT  = 2'd3;
+    reg [1:0] c_state;
+
+    wire [3:0] base_row = pos_y + k_y;
+    wire [3:0] base_col = pos_x + k_x;
+    wire [7:0] row12 = {base_row, 3'b0} + {base_row, 2'b0};
+    wire [7:0] in_index = row12 + base_col;
+    wire signed [7:0] feat_val =
+        (k_ch == 3'd0) ? feat_rd_data0 :
+        (k_ch == 3'd1) ? feat_rd_data1 :
+        (k_ch == 3'd2) ? feat_rd_data2 :
+        (k_ch == 3'd3) ? feat_rd_data3 :
+        (k_ch == 3'd4) ? feat_rd_data4 :
+                         feat_rd_data5;
+
+    wire [7:0] k_ch_25 = {k_ch, 4'b0} + {k_ch, 3'b0} + k_ch;
+    wire [7:0] k_y_5 = {k_y, 2'b0} + k_y;
+    wire [7:0] k_flat = k_ch_25 + k_y_5 + k_x;
+    wire [11:0] oc_idx_ext = {8'd0, oc_idx};
+    wire [11:0] oc150 = (oc_idx_ext << 7) + (oc_idx_ext << 4) + (oc_idx_ext << 2) + (oc_idx_ext << 1);
+    assign conv2_weight_addr = oc150 + {4'd0, k_flat};
+    wire signed [7:0] w_val = conv2_weight_q;
+
+    wire signed [15:0] prod = $signed(feat_val) * $signed(w_val);
+    wire signed [63:0] acc_next = acc + {{48{prod[15]}}, prod};
+    wire signed [63:0] acc_bias = acc_next + $signed(conv2_biases[oc_idx]);
+    wire last_k = (k_ch == 3'd5) && (k_y == 3'd4) && (k_x == 3'd4);
+
+    integer oc_init;
+    always @(posedge clk) begin
+        if (feat_wr_en) begin
+            feat_mem0[feat_wr_addr] <= feat_wr_data0;
+            feat_mem1[feat_wr_addr] <= feat_wr_data1;
+            feat_mem2[feat_wr_addr] <= feat_wr_data2;
+            feat_mem3[feat_wr_addr] <= feat_wr_data3;
+            feat_mem4[feat_wr_addr] <= feat_wr_data4;
+            feat_mem5[feat_wr_addr] <= feat_wr_data5;
+        end
+        feat_rd_data0 <= feat_mem0[feat_rd_addr];
+        feat_rd_data1 <= feat_mem1[feat_rd_addr];
+        feat_rd_data2 <= feat_mem2[feat_rd_addr];
+        feat_rd_data3 <= feat_mem3[feat_rd_addr];
+        feat_rd_data4 <= feat_mem4[feat_rd_addr];
+        feat_rd_data5 <= feat_mem5[feat_rd_addr];
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            c_state <= C_IDLE;
+            feat_idx <= 8'd0;
+            pos_x <= 3'd0;
+            pos_y <= 3'd0;
+            oc_idx <= 4'd0;
+            k_ch <= 3'd0;
+            k_y <= 3'd0;
+            k_x <= 3'd0;
+            acc <= 64'd0;
+            mac_phase <= 1'b0;
+            conv2_valid <= 1'b0;
+            q_idx <= 4'd0;
+            feat_wr_en <= 1'b0;
+            feat_wr_addr <= 8'd0;
+            feat_wr_data0 <= 8'sd0;
+            feat_wr_data1 <= 8'sd0;
+            feat_wr_data2 <= 8'sd0;
+            feat_wr_data3 <= 8'sd0;
+            feat_wr_data4 <= 8'sd0;
+            feat_wr_data5 <= 8'sd0;
+            feat_rd_addr <= 8'd0;
+            for (oc_init = 0; oc_init < 16; oc_init = oc_init + 1)
+                conv2_out_buf[oc_init] <= 32'sd0;
+        end else begin
+            conv2_valid <= 1'b0;
+            feat_wr_en <= 1'b0;
+            case (c_state)
+                C_IDLE: begin
+                    if (weights_ready && valid_in) begin
+                        feat_wr_en <= 1'b1;
+                        feat_wr_addr <= 8'd0;
+                        feat_wr_data0 <= in_ch0;
+                        feat_wr_data1 <= in_ch1;
+                        feat_wr_data2 <= in_ch2;
+                        feat_wr_data3 <= in_ch3;
+                        feat_wr_data4 <= in_ch4;
+                        feat_wr_data5 <= in_ch5;
+                        feat_idx <= 8'd1;
+                        c_state <= C_LOAD;
+                    end
+                end
+                C_LOAD: begin
+                    if (valid_in) begin
+                        feat_wr_en <= 1'b1;
+                        feat_wr_addr <= feat_idx;
+                        feat_wr_data0 <= in_ch0;
+                        feat_wr_data1 <= in_ch1;
+                        feat_wr_data2 <= in_ch2;
+                        feat_wr_data3 <= in_ch3;
+                        feat_wr_data4 <= in_ch4;
+                        feat_wr_data5 <= in_ch5;
+                        if (feat_idx == 8'd143) begin
+                            feat_idx <= 8'd0;
+                            pos_x <= 3'd0;
+                            pos_y <= 3'd0;
+                            oc_idx <= 4'd0;
+                            k_ch <= 3'd0;
+                            k_y <= 3'd0;
+                            k_x <= 3'd0;
+                            acc <= 64'd0;
+                            mac_phase <= 1'b0;
+                            c_state <= C_MAC;
+                        end else begin
+                            feat_idx <= feat_idx + 1'b1;
+                        end
+                    end
+                end
+                C_MAC: begin
+                    if (weights_ready) begin
+                        if (!mac_phase) begin
+                            feat_rd_addr <= in_index;
+                            mac_phase <= 1'b1;
+                        end else begin
+                            if (last_k) begin
+                                if (acc_bias[63])
+                                    conv2_out_buf[oc_idx] <= 0;
+                                else
+                                    conv2_out_buf[oc_idx] <= acc_bias[31:0];
+                                if (oc_idx == 4'd15) begin
+                                    c_state <= C_OUT;
+                                    oc_idx <= 4'd0;
+                                    q_idx <= 4'd0;
+                                end else begin
+                                    oc_idx <= oc_idx + 1'b1;
+                                end
+                                k_ch <= 3'd0;
+                                k_y <= 3'd0;
+                                k_x <= 3'd0;
+                                acc <= 64'd0;
+                            end else begin
+                                acc <= acc_next;
+                                if (k_x == 3'd4) begin
+                                    k_x <= 3'd0;
+                                    if (k_y == 3'd4) begin
+                                        k_y <= 3'd0;
+                                        if (k_ch == 3'd5)
+                                            k_ch <= 3'd0;
+                                        else
+                                            k_ch <= k_ch + 1'b1;
+                                    end else begin
+                                        k_y <= k_y + 1'b1;
+                                    end
+                                end else begin
+                                    k_x <= k_x + 1'b1;
+                                end
+                            end
+                            mac_phase <= 1'b0;
+                        end
+                    end
+                end
+                C_OUT: begin
+                    conv2_q_buf[q_idx] <= conv2_q;
+                    if (q_idx == 4'd15) begin
+                        conv2_valid <= 1'b1;
+                        mac_phase <= 1'b0;
+                        oc_idx <= 4'd0;
+                        k_ch <= 3'd0;
+                        k_y <= 3'd0;
+                        k_x <= 3'd0;
+                        acc <= 64'd0;
+                        q_idx <= 4'd0;
+                        if (pos_x == 3'd7) begin
+                            pos_x <= 3'd0;
+                            if (pos_y == 3'd7) begin
+                                pos_y <= 3'd0;
+                                c_state <= C_IDLE;
+                            end else begin
+                                pos_y <= pos_y + 1'b1;
+                                c_state <= C_MAC;
+                            end
+                        end else begin
+                            pos_x <= pos_x + 1'b1;
+                            c_state <= C_MAC;
+                        end
+                    end else begin
+                        q_idx <= q_idx + 1'b1;
+                    end
+                end
+                default: begin
+                    c_state <= C_IDLE;
+                end
+            endcase
+        end
+    end
 
     // ==========================================
     // 3. Max pool 2x2 (16 channels)
     // ==========================================
 
-    wire signed [7:0] conv2_q0;
-    wire signed [7:0] conv2_q1;
-    wire signed [7:0] conv2_q2;
-    wire signed [7:0] conv2_q3;
-    wire signed [7:0] conv2_q4;
-    wire signed [7:0] conv2_q5;
-    wire signed [7:0] conv2_q6;
-    wire signed [7:0] conv2_q7;
-    wire signed [7:0] conv2_q8;
-    wire signed [7:0] conv2_q9;
-    wire signed [7:0] conv2_q10;
-    wire signed [7:0] conv2_q11;
-    wire signed [7:0] conv2_q12;
-    wire signed [7:0] conv2_q13;
-    wire signed [7:0] conv2_q14;
-    wire signed [7:0] conv2_q15;
+    wire signed [31:0] conv2_q_sel =
+        (q_idx == 4'd0)  ? conv2_out_buf[0]  :
+        (q_idx == 4'd1)  ? conv2_out_buf[1]  :
+        (q_idx == 4'd2)  ? conv2_out_buf[2]  :
+        (q_idx == 4'd3)  ? conv2_out_buf[3]  :
+        (q_idx == 4'd4)  ? conv2_out_buf[4]  :
+        (q_idx == 4'd5)  ? conv2_out_buf[5]  :
+        (q_idx == 4'd6)  ? conv2_out_buf[6]  :
+        (q_idx == 4'd7)  ? conv2_out_buf[7]  :
+        (q_idx == 4'd8)  ? conv2_out_buf[8]  :
+        (q_idx == 4'd9)  ? conv2_out_buf[9]  :
+        (q_idx == 4'd10) ? conv2_out_buf[10] :
+        (q_idx == 4'd11) ? conv2_out_buf[11] :
+        (q_idx == 4'd12) ? conv2_out_buf[12] :
+        (q_idx == 4'd13) ? conv2_out_buf[13] :
+        (q_idx == 4'd14) ? conv2_out_buf[14] :
+                           conv2_out_buf[15];
+    wire signed [7:0] conv2_q;
+    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2 (.acc_in(conv2_q_sel), .q_out(conv2_q));
 
-    wire signed [31:0] conv2_q0_32 = {{24{conv2_q0[7]}}, conv2_q0};
-    wire signed [31:0] conv2_q1_32 = {{24{conv2_q1[7]}}, conv2_q1};
-    wire signed [31:0] conv2_q2_32 = {{24{conv2_q2[7]}}, conv2_q2};
-    wire signed [31:0] conv2_q3_32 = {{24{conv2_q3[7]}}, conv2_q3};
-    wire signed [31:0] conv2_q4_32 = {{24{conv2_q4[7]}}, conv2_q4};
-    wire signed [31:0] conv2_q5_32 = {{24{conv2_q5[7]}}, conv2_q5};
-    wire signed [31:0] conv2_q6_32 = {{24{conv2_q6[7]}}, conv2_q6};
-    wire signed [31:0] conv2_q7_32 = {{24{conv2_q7[7]}}, conv2_q7};
-    wire signed [31:0] conv2_q8_32 = {{24{conv2_q8[7]}}, conv2_q8};
-    wire signed [31:0] conv2_q9_32 = {{24{conv2_q9[7]}}, conv2_q9};
-    wire signed [31:0] conv2_q10_32 = {{24{conv2_q10[7]}}, conv2_q10};
-    wire signed [31:0] conv2_q11_32 = {{24{conv2_q11[7]}}, conv2_q11};
-    wire signed [31:0] conv2_q12_32 = {{24{conv2_q12[7]}}, conv2_q12};
-    wire signed [31:0] conv2_q13_32 = {{24{conv2_q13[7]}}, conv2_q13};
-    wire signed [31:0] conv2_q14_32 = {{24{conv2_q14[7]}}, conv2_q14};
-    wire signed [31:0] conv2_q15_32 = {{24{conv2_q15[7]}}, conv2_q15};
-
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch0 (.acc_in(conv2_ch0_r), .q_out(conv2_q0));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch1 (.acc_in(conv2_ch1_r), .q_out(conv2_q1));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch2 (.acc_in(conv2_ch2_r), .q_out(conv2_q2));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch3 (.acc_in(conv2_ch3_r), .q_out(conv2_q3));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch4 (.acc_in(conv2_ch4_r), .q_out(conv2_q4));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch5 (.acc_in(conv2_ch5_r), .q_out(conv2_q5));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch6 (.acc_in(conv2_ch6_r), .q_out(conv2_q6));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch7 (.acc_in(conv2_ch7_r), .q_out(conv2_q7));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch8 (.acc_in(conv2_ch8_r), .q_out(conv2_q8));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch9 (.acc_in(conv2_ch9_r), .q_out(conv2_q9));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch10 (.acc_in(conv2_ch10_r), .q_out(conv2_q10));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch11 (.acc_in(conv2_ch11_r), .q_out(conv2_q11));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch12 (.acc_in(conv2_ch12_r), .q_out(conv2_q12));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch13 (.acc_in(conv2_ch13_r), .q_out(conv2_q13));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch14 (.acc_in(conv2_ch14_r), .q_out(conv2_q14));
-    scaler_quantize #(.MULT_VAL(`Q_MULT_CONV2), .SHIFT_VAL(`Q_SHIFT)) u_q2_ch15 (.acc_in(conv2_ch15_r), .q_out(conv2_q15));
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            conv2_ch0_r <= 0;
-            conv2_ch1_r <= 0;
-            conv2_ch2_r <= 0;
-            conv2_ch3_r <= 0;
-            conv2_ch4_r <= 0;
-            conv2_ch5_r <= 0;
-            conv2_ch6_r <= 0;
-            conv2_ch7_r <= 0;
-            conv2_ch8_r <= 0;
-            conv2_ch9_r <= 0;
-            conv2_ch10_r <= 0;
-            conv2_ch11_r <= 0;
-            conv2_ch12_r <= 0;
-            conv2_ch13_r <= 0;
-            conv2_ch14_r <= 0;
-            conv2_ch15_r <= 0;
             conv2_valid_r <= 1'b0;
         end else begin
-            conv2_ch0_r <= conv2_ch0;
-            conv2_ch1_r <= conv2_ch1;
-            conv2_ch2_r <= conv2_ch2;
-            conv2_ch3_r <= conv2_ch3;
-            conv2_ch4_r <= conv2_ch4;
-            conv2_ch5_r <= conv2_ch5;
-            conv2_ch6_r <= conv2_ch6;
-            conv2_ch7_r <= conv2_ch7;
-            conv2_ch8_r <= conv2_ch8;
-            conv2_ch9_r <= conv2_ch9;
-            conv2_ch10_r <= conv2_ch10;
-            conv2_ch11_r <= conv2_ch11;
-            conv2_ch12_r <= conv2_ch12;
-            conv2_ch13_r <= conv2_ch13;
-            conv2_ch14_r <= conv2_ch14;
-            conv2_ch15_r <= conv2_ch15;
             conv2_valid_r <= conv2_valid;
         end
     end
@@ -319,22 +386,22 @@ module layer2_block(
         .clk      (clk),
         .rst_n    (rst_n),
         .valid_in (conv2_valid_r),
-        .in_ch0   (conv2_q0_32),
-        .in_ch1   (conv2_q1_32),
-        .in_ch2   (conv2_q2_32),
-        .in_ch3   (conv2_q3_32),
-        .in_ch4   (conv2_q4_32),
-        .in_ch5   (conv2_q5_32),
-        .in_ch6   (conv2_q6_32),
-        .in_ch7   (conv2_q7_32),
-        .in_ch8   (conv2_q8_32),
-        .in_ch9   (conv2_q9_32),
-        .in_ch10  (conv2_q10_32),
-        .in_ch11  (conv2_q11_32),
-        .in_ch12  (conv2_q12_32),
-        .in_ch13  (conv2_q13_32),
-        .in_ch14  (conv2_q14_32),
-        .in_ch15  (conv2_q15_32),
+        .in_ch0   (conv2_q_buf[0]),
+        .in_ch1   (conv2_q_buf[1]),
+        .in_ch2   (conv2_q_buf[2]),
+        .in_ch3   (conv2_q_buf[3]),
+        .in_ch4   (conv2_q_buf[4]),
+        .in_ch5   (conv2_q_buf[5]),
+        .in_ch6   (conv2_q_buf[6]),
+        .in_ch7   (conv2_q_buf[7]),
+        .in_ch8   (conv2_q_buf[8]),
+        .in_ch9   (conv2_q_buf[9]),
+        .in_ch10  (conv2_q_buf[10]),
+        .in_ch11  (conv2_q_buf[11]),
+        .in_ch12  (conv2_q_buf[12]),
+        .in_ch13  (conv2_q_buf[13]),
+        .in_ch14  (conv2_q_buf[14]),
+        .in_ch15  (conv2_q_buf[15]),
         .out_ch0  (out_ch0),
         .out_ch1  (out_ch1),
         .out_ch2  (out_ch2),

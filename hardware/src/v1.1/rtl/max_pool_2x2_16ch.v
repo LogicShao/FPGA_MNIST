@@ -8,111 +8,111 @@ module max_pool_2x2_16ch #(
     input wire rst_n,
     input wire valid_in,
 
-    input wire signed [31:0] in_ch0,
-    input wire signed [31:0] in_ch1,
-    input wire signed [31:0] in_ch2,
-    input wire signed [31:0] in_ch3,
-    input wire signed [31:0] in_ch4,
-    input wire signed [31:0] in_ch5,
-    input wire signed [31:0] in_ch6,
-    input wire signed [31:0] in_ch7,
-    input wire signed [31:0] in_ch8,
-    input wire signed [31:0] in_ch9,
-    input wire signed [31:0] in_ch10,
-    input wire signed [31:0] in_ch11,
-    input wire signed [31:0] in_ch12,
-    input wire signed [31:0] in_ch13,
-    input wire signed [31:0] in_ch14,
-    input wire signed [31:0] in_ch15,
+    input wire signed [7:0] in_ch0,
+    input wire signed [7:0] in_ch1,
+    input wire signed [7:0] in_ch2,
+    input wire signed [7:0] in_ch3,
+    input wire signed [7:0] in_ch4,
+    input wire signed [7:0] in_ch5,
+    input wire signed [7:0] in_ch6,
+    input wire signed [7:0] in_ch7,
+    input wire signed [7:0] in_ch8,
+    input wire signed [7:0] in_ch9,
+    input wire signed [7:0] in_ch10,
+    input wire signed [7:0] in_ch11,
+    input wire signed [7:0] in_ch12,
+    input wire signed [7:0] in_ch13,
+    input wire signed [7:0] in_ch14,
+    input wire signed [7:0] in_ch15,
 
-    output reg signed [31:0] out_ch0,
-    output reg signed [31:0] out_ch1,
-    output reg signed [31:0] out_ch2,
-    output reg signed [31:0] out_ch3,
-    output reg signed [31:0] out_ch4,
-    output reg signed [31:0] out_ch5,
-    output reg signed [31:0] out_ch6,
-    output reg signed [31:0] out_ch7,
-    output reg signed [31:0] out_ch8,
-    output reg signed [31:0] out_ch9,
-    output reg signed [31:0] out_ch10,
-    output reg signed [31:0] out_ch11,
-    output reg signed [31:0] out_ch12,
-    output reg signed [31:0] out_ch13,
-    output reg signed [31:0] out_ch14,
-    output reg signed [31:0] out_ch15,
+    output reg signed [7:0] out_ch0,
+    output reg signed [7:0] out_ch1,
+    output reg signed [7:0] out_ch2,
+    output reg signed [7:0] out_ch3,
+    output reg signed [7:0] out_ch4,
+    output reg signed [7:0] out_ch5,
+    output reg signed [7:0] out_ch6,
+    output reg signed [7:0] out_ch7,
+    output reg signed [7:0] out_ch8,
+    output reg signed [7:0] out_ch9,
+    output reg signed [7:0] out_ch10,
+    output reg signed [7:0] out_ch11,
+    output reg signed [7:0] out_ch12,
+    output reg signed [7:0] out_ch13,
+    output reg signed [7:0] out_ch14,
+    output reg signed [7:0] out_ch15,
     output reg out_valid
 );
 
-    reg signed [31:0] linebuf_ch0 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch1 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch2 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch3 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch4 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch5 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch6 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch7 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch8 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch9 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch10 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch11 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch12 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch13 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch14 [0:IN_WIDTH-1];
-    reg signed [31:0] linebuf_ch15 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch0 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch1 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch2 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch3 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch4 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch5 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch6 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch7 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch8 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch9 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch10 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch11 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch12 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch13 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch14 [0:IN_WIDTH-1];
+    reg signed [7:0] linebuf_ch15 [0:IN_WIDTH-1];
 
-    reg signed [31:0] left_ch0;
-    reg signed [31:0] left_ch1;
-    reg signed [31:0] left_ch2;
-    reg signed [31:0] left_ch3;
-    reg signed [31:0] left_ch4;
-    reg signed [31:0] left_ch5;
-    reg signed [31:0] left_ch6;
-    reg signed [31:0] left_ch7;
-    reg signed [31:0] left_ch8;
-    reg signed [31:0] left_ch9;
-    reg signed [31:0] left_ch10;
-    reg signed [31:0] left_ch11;
-    reg signed [31:0] left_ch12;
-    reg signed [31:0] left_ch13;
-    reg signed [31:0] left_ch14;
-    reg signed [31:0] left_ch15;
+    reg signed [7:0] left_ch0;
+    reg signed [7:0] left_ch1;
+    reg signed [7:0] left_ch2;
+    reg signed [7:0] left_ch3;
+    reg signed [7:0] left_ch4;
+    reg signed [7:0] left_ch5;
+    reg signed [7:0] left_ch6;
+    reg signed [7:0] left_ch7;
+    reg signed [7:0] left_ch8;
+    reg signed [7:0] left_ch9;
+    reg signed [7:0] left_ch10;
+    reg signed [7:0] left_ch11;
+    reg signed [7:0] left_ch12;
+    reg signed [7:0] left_ch13;
+    reg signed [7:0] left_ch14;
+    reg signed [7:0] left_ch15;
 
-    reg signed [31:0] prev_row_left_ch0;
-    reg signed [31:0] prev_row_left_ch1;
-    reg signed [31:0] prev_row_left_ch2;
-    reg signed [31:0] prev_row_left_ch3;
-    reg signed [31:0] prev_row_left_ch4;
-    reg signed [31:0] prev_row_left_ch5;
-    reg signed [31:0] prev_row_left_ch6;
-    reg signed [31:0] prev_row_left_ch7;
-    reg signed [31:0] prev_row_left_ch8;
-    reg signed [31:0] prev_row_left_ch9;
-    reg signed [31:0] prev_row_left_ch10;
-    reg signed [31:0] prev_row_left_ch11;
-    reg signed [31:0] prev_row_left_ch12;
-    reg signed [31:0] prev_row_left_ch13;
-    reg signed [31:0] prev_row_left_ch14;
-    reg signed [31:0] prev_row_left_ch15;
+    reg signed [7:0] prev_row_left_ch0;
+    reg signed [7:0] prev_row_left_ch1;
+    reg signed [7:0] prev_row_left_ch2;
+    reg signed [7:0] prev_row_left_ch3;
+    reg signed [7:0] prev_row_left_ch4;
+    reg signed [7:0] prev_row_left_ch5;
+    reg signed [7:0] prev_row_left_ch6;
+    reg signed [7:0] prev_row_left_ch7;
+    reg signed [7:0] prev_row_left_ch8;
+    reg signed [7:0] prev_row_left_ch9;
+    reg signed [7:0] prev_row_left_ch10;
+    reg signed [7:0] prev_row_left_ch11;
+    reg signed [7:0] prev_row_left_ch12;
+    reg signed [7:0] prev_row_left_ch13;
+    reg signed [7:0] prev_row_left_ch14;
+    reg signed [7:0] prev_row_left_ch15;
 
     reg [5:0] col;
     reg [5:0] row;
 
     integer i;
 
-    function signed [31:0] max2;
-        input signed [31:0] a;
-        input signed [31:0] b;
+    function signed [7:0] max2;
+        input signed [7:0] a;
+        input signed [7:0] b;
         begin
             max2 = (a >= b) ? a : b;
         end
     endfunction
 
-    function signed [31:0] max4;
-        input signed [31:0] a;
-        input signed [31:0] b;
-        input signed [31:0] c;
-        input signed [31:0] d;
+    function signed [7:0] max4;
+        input signed [7:0] a;
+        input signed [7:0] b;
+        input signed [7:0] c;
+        input signed [7:0] d;
         begin
             max4 = max2(max2(a, b), max2(c, d));
         end

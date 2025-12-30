@@ -122,7 +122,6 @@ def main():
         vcd_path,
     ]
     wave_path = next((p for p in wave_candidates if p and os.path.exists(p)), None)
-    wave_path = next((p for p in vcd_candidates if os.path.exists(p)), None)
     if wave_path:
         print(f"Opening waveform: {wave_path}")
         if sys.platform == "win32":
