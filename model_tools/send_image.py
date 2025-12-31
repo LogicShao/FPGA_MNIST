@@ -7,6 +7,7 @@ import numpy as np
 # --- Serial config (update COM port as needed) ---
 SERIAL_PORT = "COM7"  # Windows example; Linux/Mac: /dev/ttyUSB0
 BAUD_RATE = 115200
+FPGA_CLK_HZ = 50_000_000  # Must match CLK_FREQ in hardware.
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 QUANT_PARAMS_PATH = os.path.join(os.path.dirname(__file__), "quant_params.json")
 
@@ -93,8 +94,10 @@ def send_via_uart(data_bytes):
             hex_bytes = " ".join(f"{b:02X}" for b in resp)
             print(f"[FPGA]: raw bytes = {hex_bytes}")
             print(f"[FPGA]: fc2_bytes_i8 = {results_i8}")
-            print(f"[FPGA]: inf_cycles_total = {cycles_total}")
-            print(f"[FPGA]: inf_cycles_pure = {cycles_pure}")
+            total_ms = (cycles_total / FPGA_CLK_HZ) * 1e3
+            pure_ms = (cycles_pure / FPGA_CLK_HZ) * 1e3
+            print(f"[FPGA]: inf_cycles_total = {cycles_total} (~{total_ms:.3f} ms)")
+            print(f"[FPGA]: inf_cycles_pure = {cycles_pure} (~{pure_ms:.3f} ms)")
 
         ser.close()
     except Exception as e:
