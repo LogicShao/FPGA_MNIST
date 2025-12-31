@@ -20,7 +20,7 @@ v1.1 采用纯 RTL 架构，数据从 PC 通过 UART 进入 FPGA，推理结果�
 
 核心路径位于 `hardware/src/v1.1/rtl/`：
 
-- `layer1_window_gen.v`：5x5 窗口生成
+- `layer1_window_gen.v`：5x5 窗口生成v
 - `conv_pe_5x5.v` / `conv_pe_group.v`：卷积 PE
 - `conv1_core.v` / `conv2_core.sv`：卷积核心
 - `max_pool_2x2.v` / `max_pool_2x2_16ch.v`：池化

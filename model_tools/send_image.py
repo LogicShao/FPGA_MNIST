@@ -70,6 +70,7 @@ def send_via_uart(data_bytes):
     try:
         ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
         print(f"Opened serial {SERIAL_PORT}")
+        ser.reset_input_buffer()
 
         # Protocol: 0xAA (head) + 784 bytes + 0x55 (tail)
         packet = bytearray()
@@ -79,17 +80,38 @@ def send_via_uart(data_bytes):
 
         print(f"Sending {len(packet)} bytes...")
         ser.write(packet)
+        ser.flush()
         print("Send complete. Waiting for board response...")
 
-        start_time = time.time()
-        while time.time() - start_time < 5:
-            if ser.in_waiting:
-                line = ser.readline().decode("utf-8", errors="ignore")
-                print(f"[FPGA]: {line.strip()}")
+        resp = read_uart_response(ser, expected=14, timeout=5.0)
+        if resp is None:
+            print("[FPGA]: timeout waiting for 14-byte response")
+        else:
+            results_u8 = list(resp[:10])
+            results_i8 = [np.int8(b).item() for b in results_u8]
+            cycles = int.from_bytes(resp[10:14], byteorder="little", signed=False)
+            hex_bytes = " ".join(f"{b:02X}" for b in resp)
+            print(f"[FPGA]: raw bytes = {hex_bytes}")
+            print(f"[FPGA]: fc2_bytes_i8 = {results_i8}")
+            print(f"[FPGA]: inf_cycles = {cycles}")
 
         ser.close()
     except Exception as e:
         print(f"Serial error: {e}")
+
+
+def read_uart_response(ser, expected=14, timeout=5.0):
+    buf = bytearray()
+    start = time.time()
+    while len(buf) < expected and (time.time() - start) < timeout:
+        chunk = ser.read(expected - len(buf))
+        if chunk:
+            buf.extend(chunk)
+        else:
+            time.sleep(0.01)
+    if len(buf) < expected:
+        return None
+    return bytes(buf[:expected])
 
 
 if __name__ == "__main__":
