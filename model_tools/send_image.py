@@ -5,8 +5,9 @@ import time
 import numpy as np
 
 # --- Serial config (update COM port as needed) ---
-SERIAL_PORT = "COM5"  # Windows example; Linux/Mac: /dev/ttyUSB0
+SERIAL_PORT = "COM7"  # Windows example; Linux/Mac: /dev/ttyUSB0
 BAUD_RATE = 115200
+FPGA_CLK_HZ = 50_000_000  # Must match CLK_FREQ in hardware.
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 QUANT_PARAMS_PATH = os.path.join(os.path.dirname(__file__), "quant_params.json")
 
@@ -83,17 +84,20 @@ def send_via_uart(data_bytes):
         ser.flush()
         print("Send complete. Waiting for board response...")
 
-        resp = read_uart_response(ser, expected=14, timeout=5.0)
+        resp = read_uart_response(ser, expected=18, timeout=5.0)
         if resp is None:
-            print("[FPGA]: timeout waiting for 14-byte response")
+            print("[FPGA]: timeout waiting for 18-byte response")
         else:
-            results_u8 = list(resp[:10])
-            results_i8 = [np.int8(b).item() for b in results_u8]
-            cycles = int.from_bytes(resp[10:14], byteorder="little", signed=False)
+            results_i8 = np.frombuffer(resp[:10], dtype=np.int8).tolist()
+            cycles_total = int.from_bytes(resp[10:14], byteorder="little", signed=False)
+            cycles_pure = int.from_bytes(resp[14:18], byteorder="little", signed=False)
             hex_bytes = " ".join(f"{b:02X}" for b in resp)
             print(f"[FPGA]: raw bytes = {hex_bytes}")
             print(f"[FPGA]: fc2_bytes_i8 = {results_i8}")
-            print(f"[FPGA]: inf_cycles = {cycles}")
+            total_ms = (cycles_total / FPGA_CLK_HZ) * 1e3
+            pure_ms = (cycles_pure / FPGA_CLK_HZ) * 1e3
+            print(f"[FPGA]: inf_cycles_total = {cycles_total} (~{total_ms:.3f} ms)")
+            print(f"[FPGA]: inf_cycles_pure = {cycles_pure} (~{pure_ms:.3f} ms)")
 
         ser.close()
     except Exception as e:
