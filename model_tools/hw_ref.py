@@ -288,6 +288,12 @@ def main():
     parser.add_argument("--normalize", action="store_true", help="Apply MNIST normalization.")
     parser.add_argument("--data-dir", default="model_tools/data", help="MNIST data directory.")
     parser.add_argument("--quiet", action="store_true", help="Suppress per-sample prints.")
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=0,
+        help="Print progress every N samples in batch mode (quiet mode).",
+    )
     args = parser.parse_args()
 
     quant = None
@@ -316,6 +322,7 @@ def main():
             images, labels = load_mnist_raw(args.data_dir, train=False)
         total = 0
         correct = 0
+        target = args.count
         for idx in range(args.start, args.start + args.count):
             if dataset is not None:
                 img, label = dataset[idx]
@@ -332,7 +339,17 @@ def main():
                 print(f"[{idx}] label={label} pred={pred} match={match}")
             total += 1
             correct += match
+            if args.progress_every > 0 and args.quiet:
+                if (total % args.progress_every) == 0 or total == target:
+                    pct = (total / target) * 100.0 if target else 0.0
+                    print(
+                        f"Progress: {total}/{target} ({pct:.2f}%) correct={correct}",
+                        end="\r",
+                        flush=True,
+                    )
         acc = correct / total * 100.0 if total else 0.0
+        if args.progress_every > 0 and args.quiet:
+            print()
         print(f"Accuracy: {correct}/{total} = {acc:.2f}%")
         return
 
