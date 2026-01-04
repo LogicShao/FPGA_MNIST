@@ -70,7 +70,7 @@
 #### 量化策略
 
 - **8-bit 数据位宽**（输入、权重、激活值）
-- **定点量化公式**：`y_q = clamp((acc·mult + round) >> shift, -128, 127)`
+- **定点量化公式**：$y_q = \text{clamp}\left(\left\lfloor\frac{\text{acc} \cdot \text{mult} + \text{round}}{2^{\text{shift}}}\right\rfloor, -128, 127\right)$
 - **量化参数统一管理**（`quant_params.vh`）
 - **精度保持**：INT8 量化后准确率 98.71%，损失仅 0.29%
 
@@ -223,7 +223,16 @@ python model_tools/send_image.py
 
 ## 📖 参考资料
 
-- **LeCun et al., "Gradient-Based Learning Applied to Document Recognition"**, 1998
+### 学术论文
+- **LeCun et al., "Gradient-Based Learning Applied to Document Recognition"**, *Proceedings of the IEEE*, 1998
+- **Jacob et al., "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference"**, *CVPR*, 2018
+
+### 技术文档
 - **Intel Cyclone IV Handbook**: [链接](https://www.intel.com/content/www/us/en/programmable/documentation/lit-index.html)
+- **野火 EP4CE10 开发板文档**: [链接](https://doc.embedfire.com/fpga/altera/ep4ce10_pro/zh/latest/index.html) - Cyclone IV EP4CE10 开发板详细教程（中文）
+
+### 相关资源
+- **MNIST Database**: [http://yann.lecun.com/exdb/mnist/](http://yann.lecun.com/exdb/mnist/)
+- **PyTorch Quantization Tutorial**: [链接](https://pytorch.org/tutorials/advanced/static_quantization_tutorial.html)
 
 ---

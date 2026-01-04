@@ -36,48 +36,61 @@
 
 ### 基本原理
 
-本项目采用 **对称量化（Symmetric Quantization）** 策略，将浮点数映射到 INT8 范围 `[-128, 127]`：
+本项目采用 **对称量化（Symmetric Quantization）** 策略，将浮点数映射到 INT8 范围 $[-128, 127]$：
 
-```
-量化公式:   q = clamp(round(r / scale), -128, 127)
-反量化公式: r = q * scale
-```
+$$
+\begin{aligned}
+\text{量化公式:} \quad q &= \text{clamp}\left(\text{round}\left(\frac{r}{s}\right), -128, 127\right) \\
+\text{反量化公式:} \quad r &= q \cdot s
+\end{aligned}
+$$
 
 其中：
-- `r`：浮点数（Real Number）
-- `q`：量化整数（Quantized Integer）
-- `scale`：缩放因子（Scale Factor）
+- $r$：浮点数（Real Number）
+- $q$：量化整数（Quantized Integer）
+- $s$：缩放因子（Scale Factor）
 
 ### 多层级量化
 
 神经网络中每一层都有独立的量化参数：
 
-```
-输入数据 (x)      --[s_in]-->   INT8
-权重 (w)         --[s_w]-->    INT8
-激活值 (act)     --[s_out]-->  INT8
-```
+$$
+\begin{aligned}
+\text{输入数据 } (x) \quad &\xrightarrow{[s_{\text{in}}]} \quad \text{INT8} \\
+\text{权重 } (w) \quad &\xrightarrow{[s_w]} \quad \text{INT8} \\
+\text{激活值 } (\text{act}) \quad &\xrightarrow{[s_{\text{out}}]} \quad \text{INT8}
+\end{aligned}
+$$
 
 **核心挑战**：卷积/全连接运算后的累加结果需要重新量化回 INT8：
 
-```
-acc = Σ(x_q[i] * w_q[i])        # 累加器（64-bit）
-acc_real ≈ acc * (s_in * s_w)   # 反量化到浮点域
-y_q = acc_real / s_out          # 量化到输出域
-```
+$$
+\begin{aligned}
+\text{acc} &= \sum_{i} (x_q[i] \times w_q[i]) \quad \text{# 累加器（64-bit）} \\
+\text{acc}_{\text{real}} &\approx \text{acc} \times (s_{\text{in}} \times s_w) \quad \text{# 反量化到浮点域} \\
+y_q &= \frac{\text{acc}_{\text{real}}}{s_{\text{out}}} \quad \text{# 量化到输出域}
+\end{aligned}
+$$
 
 ### 定点近似（Fixed-Point Approximation）
 
 为避免浮点除法，采用整数移位近似：
 
-```verilog
-eff = s_out / (s_in * s_w)
-mult = round(eff * 2^shift)     # shift 通常为 20-24
+$$
+\begin{aligned}
+\text{eff} &= \frac{s_{\text{out}}}{s_{\text{in}} \times s_w} \\
+\text{mult} &= \text{round}(\text{eff} \times 2^{\text{shift}}) \quad \text{# shift 通常为 20-24}
+\end{aligned}
+$$
 
-// 硬件实现
-acc_scaled = (acc * mult + round_bias) >> shift
-y_q = clamp(acc_scaled, -128, 127)
-```
+**硬件实现**：
+
+$$
+\begin{aligned}
+\text{acc}_{\text{scaled}} &= \frac{\text{acc} \times \text{mult} + \text{round\_bias}}{2^{\text{shift}}} \\
+y_q &= \text{clamp}(\text{acc}_{\text{scaled}}, -128, 127)
+\end{aligned}
+$$
 
 **示例**（Layer1 量化参数）：
 ```json
@@ -108,14 +121,15 @@ def quantize_weights(W_float, s_w):
 
 偏置需要匹配累加器的尺度，因此量化为 **INT32**：
 
-```python
-bias_q = round(bias_float / (s_in * s_w))  # INT32
-```
+$$
+\text{bias}_q = \text{round}\left(\frac{\text{bias}_{\text{float}}}{s_{\text{in}} \times s_w}\right) \quad \text{# INT32}
+$$
 
 在硬件中，偏置直接加到 64-bit 累加器上：
-```verilog
-acc = Σ(x[i] * w[i]) + bias_q
-```
+
+$$
+\text{acc} = \sum_{i} (x[i] \times w[i]) + \text{bias}_q
+$$
 
 ---
 

@@ -299,10 +299,13 @@ python export.py --list
 ### 量化算法
 
 使用**对称量化**：
-```
-scale = 127 / max(abs(weights))
-quantized = round(weights * scale).clip(-127, 127)
-```
+
+$$
+\begin{aligned}
+s &= \frac{127}{\max(|\text{weights}|)} \\
+\text{quantized} &= \text{clamp}(\text{round}(\text{weights} \times s), -127, 127)
+\end{aligned}
+$$
 
 每层权重和偏置独立计算缩放因子，量化误差<0.5%。
 

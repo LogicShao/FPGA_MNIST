@@ -148,12 +148,15 @@ end
 - 在输出阶段通过 `scaler_quantize` 模块将 64-bit 结果量化回 8-bit
 
 **量化公式**：
-```verilog
-acc_scaled = (acc * mult + (1 << (shift-1))) >> shift;
-result = clamp(acc_scaled, -128, 127);
-```
 
-其中 `mult` 和 `shift` 由 Python 脚本预计算，存储在 `quant_params.vh` 中。
+$$
+\begin{aligned}
+\text{acc}_{\text{scaled}} &= \frac{\text{acc} \times \text{mult} + 2^{\text{shift}-1}}{2^{\text{shift}}} \\
+\text{result} &= \text{clamp}(\text{acc}_{\text{scaled}}, -128, 127)
+\end{aligned}
+$$
+
+其中 $\text{mult}$ 和 $\text{shift}$ 由 Python 脚本预计算，存储在 `quant_params.vh` 中。
 
 ### 2.5.3 状态机（FSM）控制
 
@@ -668,6 +671,7 @@ latency_us = inf_cycles / (CLK_FREQ / 1_000_000)
 
 ### 工具与芯片手册
 - [Intel Cyclone IV Handbook](https://www.intel.com/content/www/us/en/programmable/documentation/lit-index.html)
+- [野火 EP4CE10 开发板文档](https://doc.embedfire.com/fpga/altera/ep4ce10_pro/zh/latest/index.html) - Cyclone IV EP4CE10 开发板详细教程（中文）
 - [Verilog HDL 数字设计与综合](https://www.amazon.cn/dp/B00IR0PV6S)
 - [Icarus Verilog 文档](http://iverilog.icarus.com)
 
