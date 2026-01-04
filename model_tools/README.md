@@ -87,8 +87,8 @@ $$
 
 $$
 \begin{aligned}
-\text{acc}_{\text{scaled}} &= \frac{\text{acc} \times \text{mult} + \text{round\_bias}}{2^{\text{shift}}} \\
-y_q &= \text{clamp}(\text{acc}_{\text{scaled}}, -128, 127)
+\mathrm{acc_{scaled}} &= \frac{\mathrm{acc} \times \mathrm{mult} + 2^{\mathrm{shift}-1}}{2^{\mathrm{shift}}} \\
+y_q &= \mathrm{clamp}(\mathrm{acc_{scaled}}, -128, 127)
 \end{aligned}
 $$
 
