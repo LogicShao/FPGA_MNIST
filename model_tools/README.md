@@ -66,9 +66,9 @@ $$
 
 $$
 \begin{aligned}
-\text{acc} &= \sum_{i} (x_q[i] \times w_q[i]) \quad \text{# 累加器（64-bit）} \\
-\text{acc}_{\text{real}} &\approx \text{acc} \times (s_{\text{in}} \times s_w) \quad \text{# 反量化到浮点域} \\
-y_q &= \frac{\text{acc}_{\text{real}}}{s_{\text{out}}} \quad \text{# 量化到输出域}
+\text{acc} &= \sum_{i} (x_q[i] \times w_q[i]) && \text{(累加器：64-bit)} \\
+\text{acc}_{\text{real}} &\approx \text{acc} \times (s_{\text{in}} \times s_w) && \text{(反量化到浮点域)} \\
+y_q &= \frac{\text{acc}_{\text{real}}}{s_{\text{out}}} && \text{(量化到输出域)}
 \end{aligned}
 $$
 
@@ -79,7 +79,7 @@ $$
 $$
 \begin{aligned}
 \text{eff} &= \frac{s_{\text{out}}}{s_{\text{in}} \times s_w} \\
-\text{mult} &= \text{round}(\text{eff} \times 2^{\text{shift}}) \quad \text{# shift 通常为 20-24}
+\text{mult} &= \text{round}(\text{eff} \times 2^{\text{shift}}) && \text{(shift 通常为 20-24)}
 \end{aligned}
 $$
 
@@ -122,7 +122,7 @@ def quantize_weights(W_float, s_w):
 偏置需要匹配累加器的尺度，因此量化为 **INT32**：
 
 $$
-\text{bias}_q = \text{round}\left(\frac{\text{bias}_{\text{float}}}{s_{\text{in}} \times s_w}\right) \quad \text{# INT32}
+\text{bias}_q = \text{round}\left(\frac{\text{bias}_{\text{float}}}{s_{\text{in}} \times s_w}\right) \quad \text{(INT32 格式)}
 $$
 
 在硬件中，偏置直接加到 64-bit 累加器上：
