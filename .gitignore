@@ -1,4 +1,6 @@
-# Quartus 编译垃圾
+# ================================
+# Quartus 综合与编译产物
+# ================================
 db/
 incremental_db/
 output_files/
@@ -8,47 +10,83 @@ simulation/
 *.sram
 *.qws
 
-# IDE 生成的文件
-.vscode/
-.idea/
-*.qpf~
-*.qsf~
-*.qws~
+# Quartus 工程目录（根据实际情况保留或忽略）
+/hardware/quartus_prj/
 
-# MNIST data
+# ================================
+# Verilog 仿真与波形
+# ================================
+*.vcd
+*.fst
+*.out
+
+# ================================
+# Python 与机器学习
+# ================================
+# 字节码与缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 模型与日志
+*.pth
+*.pkl
+model_tools/logs/
+model_tools/batch_sim_debug/
+
+# MNIST 数据集（较大，不提交）
 model_tools/data/
 data/
 *.gz
 
-# Nios II 编译垃圾
+# ================================
+# 测试与调试产物
+# ================================
+*.csv
+*.log
+*.tmp
+
+# ================================
+# Nios II 软核相关（Legacy）
+# ================================
+# 编译产物
 *.elf
 *.map
 *.objdump
 *.o
 *.d
 *.dep
-/hardware/quartus_proj/**
-/hardware/quartus_proj/
-/hardware/quartus_prj/**
-/hardware/quartus_prj/
 
-# 忽略 BSP (通常不需要提交，因为可以由 sopcinfo 重新生成)
-# 如果你修改了驱动源码，则需要注释掉下面这行
+# BSP（可由 sopcinfo 重新生成）
 /hardware/quartus_proj/qsys/software/*_bsp/
 hardware/software/
-*.bak
-*.swp
-*.log
-*.tmp
-*.bak~
 
-model_tools/logs/
-*.pth
-__pycache__/
+# ================================
+# IDE 与编辑器
+# ================================
+.vscode/
+.idea/
+*.qpf~
+*.qsf~
+*.qws~
+*.bak
+*.bak~
+*.swp
+
+# ================================
+# 构建与二进制文件
+# ================================
 *.exe
 *.bin
-*.out
-*.vcd
-*.fst
-*.csv
+
+# ================================
+# AI 工具生成的索引
+# ================================
+.claude/
+AGENTS.md
+CLAUDE.md
+
+# ================================
+# 大作业报告（本地保留，不提交到代码仓库）
+# ================================
 /report/

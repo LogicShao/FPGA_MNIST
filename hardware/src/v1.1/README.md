@@ -268,6 +268,95 @@ python model_tools/hw_ref.py --image hardware/src/v1.1/tb/test_image.mem --weigh
 ```
 重点对比：Conv1/Pool1/Conv2 q/Pool2/FC1/FC2 的输出是否一致。
 
+### 3.4 仿真波形分析
+
+#### 3.4.1 全系统流水线时序
+
+系统级验证的重点在于确认各级流水线是否发生了阻塞（Stall）或气泡（Bubble）。下图展示了神经网络核心模块的顶层关键信号波形。
+
+<div align="center">
+<img src="../../../assets/sim/wave1_tb_mnist_network_core_fit_view.png" alt="系统全流程仿真波形" width="95%">
+<p><i>图：神经网络核心模块（mnist_network_core）全流程仿真波形概览</i></p>
+</div>
+
+<div align="center">
+<img src="../../../assets/sim/wave2_tb_mnist_network_core_wave_fit_view.png" alt="各层级 Valid 握手信号" width="95%">
+<p><i>图：各层级 Valid 握手信号的时序级联关系</i></p>
+</div>
+
+**波形关键观察点**：
+- **输入阶段**：仿真中将 UART 字节节拍抽象为 `sys_clk` 域连续 784 个 `valid_in` 脉冲（每拍 1 字节），对应 28×28 像素的串行输入。
+- **层级延迟**：各层的输出有效信号（`out_valid`）呈现出明显的阶梯状分布。Layer1 需要等待足够的帧缓存填充后才开始输出，导致了首个输出脉冲相对于输入的显著延迟。
+- **输出脉冲计数**：各层输出的有效脉冲数量严格对应其特征图维度：
+  - Layer1：144 个脉冲（12×12）
+  - Layer2：16 个脉冲（4×4）
+  - FC1：32 个脉冲
+  - Result：10 个脉冲
+
+这证明了内部计数器逻辑的正确性，无丢包或多发情况。
+
+#### 3.4.2 卷积层（Layer1）细节分析
+
+<div align="center">
+<img src="../../../assets/sim/wave3_tb_layer1_block_wave.png" alt="Layer1 内部时序" width="95%">
+<p><i>图：Layer1 内部时序细节 - 输入缓存写入与卷积核滑动计算状态跳转</i></p>
+</div>
+
+**关键观察**：
+- 在 `img_wr_en` 停止写入后，状态机进入 `LOAD/MAC/OUT` 的循环模式
+- 由于采用了串行 MAC 架构，每一个输出像素的产生都需要数十个时钟周期的计算时间
+- 这种非对齐的吞吐特性要求后级模块必须具备基于 `valid` 信号的自适应接收能力
+
+#### 3.4.3 深层网络与输出收敛
+
+<div align="center">
+<img src="../../../assets/sim/wave1_tb_mnist_network_core_end_wave.png" alt="推理结束阶段" width="95%">
+<p><i>图：推理结束阶段 - 全连接层 FC2 的连续结果输出</i></p>
+</div>
+
+<div align="center">
+<img src="../../../assets/sim/wave2_tb_mnist_network_core_wave_end.png" alt="全网络流水线收敛" width="95%">
+<p><i>图：全网络流水线收敛波形 - 从输入停止到最终结果产出的延迟特性</i></p>
+</div>
+
+**关键观察**：
+- 随着 Layer2、Layer3 的计算陆续完成，最终的分类结果信号 `result_valid` 在时间轴末端连续输出了 10 个脉冲
+- 数据总线 `result` 上的数值在每个有效时钟沿更新，依次输出了 0 到 9 对应的置信度得分（Logits）
+- 这种紧凑的突发输出模式表明全连接层的流水线效率极高
+
+#### 3.4.4 底层计算单元验证
+
+为了排除顶层逻辑掩盖底层错误的风险，我们对子模块进行了独立验证：
+
+<div align="center">
+<img src="../../../assets/sim/wave4.png" alt="Layer2 控制信号波形" width="95%">
+<p><i>图：Layer2 控制信号波形 - 多通道卷积的索引切换与状态跳转</i></p>
+</div>
+
+**Layer2 控制逻辑验证**：
+- 状态机 `c_state` 配合坐标计数器 `pos_x/y` 及量化索引 `q_idx` 协同工作
+- 波形显示量化索引在 0 到 15 之间循环，准确对应了 Layer2 输出的 16 个通道
+- 验证了多通道卷积逻辑的正确性
+
+<div align="center">
+<img src="../../../assets/sim/wave5.png" alt="基本卷积单元波形" width="95%">
+<p><i>图：Conv1 基本计算单元波形 - 输入数据流与卷积结果的同步关系</i></p>
+</div>
+
+**基本卷积单元验证**：
+- `conv1_unit` 的波形表明，只有当输入数据流满足 5×5 窗口条件时，`result_valid` 才会拉高
+- 输出数据与 Python 模型计算的中间值一致
+
+<div align="center">
+<img src="../../../assets/sim/wave6.png" alt="点积模块波形" width="95%">
+<p><i>图：通用点积模块波形 - 基于包（Packet）的累加控制逻辑</i></p>
+</div>
+
+**点积模块验证**：
+- 通过 SOP（Start of Packet）和 EOP（End of Packet）信号界定一次计算包
+- 波形显示在 EOP 信号到达后的下一个时钟周期，累加结果被输出
+- 验证了全连接层神经元的计算时序
+
 ---
 
 ## 4. 批量仿真（测试集）
@@ -345,7 +434,29 @@ latency_us = inf_cycles / (CLK_FREQ / 1_000_000)
 3) 输出 10 字节结果 + 4 字节周期数  
 4) 发送完成后清理状态，等待下一张图
 
-### 5.4 常见问题排查
+### 5.4 板级验证实测结果
+
+在仿真通过后，系统被部署到 EP4CE10 开发板上进行实测。测试方案如下：通过 PC 端 Python 脚本将 MNIST 测试集图片通过 UART 串口发送给 FPGA，FPGA 推理完成后将 10 个类别的得分回传至 PC 显示，并将识别出的最大概率数字显示在板载数码管上。
+
+下图展示了两次典型的测试结果：
+
+<div align="center">
+<img src="../../../assets/real/label1pred.png" alt="数字 1 识别结果" width="90%">
+<p><i>图：标签为 1 的测试样本识别结果 - FPGA 正确识别为数字 1，数码管显示一致</i></p>
+</div>
+
+<div align="center">
+<img src="../../../assets/real/label7pred.png" alt="数字 7 识别结果" width="90%">
+<p><i>图：标签为 7 的测试样本识别结果 - FPGA 正确识别为数字 7，数码管显示一致</i></p>
+</div>
+
+**测试结论**：
+1. **数字 "1" 识别**：输入一张手写数字 1 的图片，FPGA 回传的 Log 显示 Index 1 的得分显著高于其他类别，数码管正确显示 "1"。
+2. **数字 "7" 识别**：输入一张手写数字 7 的图片，FPGA 同样做出了正确判断，数码管显示 "7"。
+
+实测结果表明，FPGA 硬件逻辑与 Python 仿真模型具有高度的一致性，且系统在 115200 波特率下运行稳定，未出现数据丢包或死锁现象。
+
+### 5.5 常见问题排查
 
 - UART 无返回：检查 `SERIAL_PORT` / `BAUD_RATE` / 接线
 - 预测不一致：确认 `quant_params.json` 与权重匹配

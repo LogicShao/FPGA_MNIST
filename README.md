@@ -20,22 +20,57 @@
 - **软硬协同**：Python 训练量化 + Verilog 硬件加速的完整工作流
 
 ### 技术实现
-- **网络架构**：TinyLeNet（简化 LeNet-5）
-  - Layer1: Conv 6@5×5 + ReLU + Pool (28×28 → 12×12×6)
-  - Layer2: Conv 16@5×5 + ReLU + Pool (12×12×6 → 4×4×16)
-  - Layer3: FC1 (256 → 32) + ReLU
-  - Layer4: FC2 (32 → 10)
 
-- **硬件架构**
-  - 串行 MAC（乘累加）架构，资源共享策略
-  - 64-bit 宽位宽累加器，防止定点溢出
-  - 状态机控制的流水线设计
-  - 帧缓存 + 滑动窗口的卷积实现
+#### 网络架构
 
-- **量化策略**
-  - 8-bit 数据位宽（输入、权重、激活值）
-  - 定点量化公式：`y_q = clamp((acc·mult + round) >> shift, -128, 127)`
-  - 量化参数统一管理（`quant_params.vh`）
+本设计采用 TinyLeNet（简化版 LeNet-5）网络架构：
+
+<div align="center">
+<img src="assets/simpleLeNet-nn.svg" alt="TinyLeNet 网络拓扑结构" width="90%">
+<p><i>图 1: TinyLeNet 网络拓扑结构 - 从左至右依次为输入层、两层卷积池化层及两层全连接层</i></p>
+</div>
+
+**网络层级详解**：
+- **Layer1**: Conv 6@5×5 + ReLU + Pool (28×28 → 12×12×6)
+- **Layer2**: Conv 16@5×5 + ReLU + Pool (12×12×6 → 4×4×16)
+- **Layer3**: FC1 (256 → 32) + ReLU
+- **Layer4**: FC2 (32 → 10)
+
+#### 训练与验证
+
+<div align="center">
+<img src="assets/train_curve.png" alt="训练过程曲线" width="80%">
+<p><i>图 2: 神经网络训练过程曲线 - 上图为训练损失收敛情况，下图为测试集准确率与学习率的变化关系</i></p>
+</div>
+
+**训练策略**：
+- 在第 27、36、45 个 Epoch 实施学习率衰减（Learning Rate Decay）
+- 每次学习率降低时，测试集准确率均出现提升
+- 最终在第 50 个 Epoch 达到 **99.00%** 的浮点精度
+
+#### 硬件架构
+
+- **串行 MAC（乘累加）架构**，资源共享策略
+- **64-bit 宽位宽累加器**，防止定点溢出
+- **状态机控制的流水线设计**
+- **帧缓存 + 滑动窗口**的卷积实现
+
+<div align="center">
+<img src="assets/RTL/top_RTL.png" alt="系统顶层 RTL 视图" width="90%">
+<p><i>图 3: 系统顶层模块（mnist_system_top）RTL 视图 - 展示 UART 接口与神经网络核心的连接关系</i></p>
+</div>
+
+<div align="center">
+<img src="assets/RTL/mnist_network_core.png" alt="网络核心 RTL 视图" width="90%">
+<p><i>图 4: 神经网络计算核心（mnist_network_core）RTL 视图 - 四层网络模块的级联结构</i></p>
+</div>
+
+#### 量化策略
+
+- **8-bit 数据位宽**（输入、权重、激活值）
+- **定点量化公式**：`y_q = clamp((acc·mult + round) >> shift, -128, 127)`
+- **量化参数统一管理**（`quant_params.vh`）
+- **精度保持**：INT8 量化后准确率 98.71%，损失仅 0.29%
 
 ### 资源占用（EP4CE10F17C8）
 | 资源类型 | 使用量 | 总量 | 利用率 |
