@@ -1,131 +1,224 @@
-# 快速开始指南
+# 快速开始指南（v1.1 硬件加速器）
 
-## 新架构快速上手（5分钟）
+> 5 分钟完成从量化参数生成到仿真验证的完整流程
 
-### 1. 查看可用模型
+---
+
+## ⚡ 极速上手（零基础）
+
+### 前提条件
+
+- ✅ Python 3.x 已安装
+- ✅ 已安装依赖：`pip install torch torchvision numpy tqdm`
+- ✅ Icarus Verilog 已安装（仿真需要）
+
+### 三步完成验证
 
 ```bash
 cd model_tools
-python train.py --list-models
+
+# 1. 生成量化参数（20秒）
+python calc_quant_params.py --normalize
+
+# 2. 生成 INT32 偏置 ROM（5秒）
+python quantize_bias.py \
+    --quant-params quant_params.json \
+    --out-dir ../hardware/src/v1.1/rtl/weights
+
+# 3. 导出测试图像并运行 Python 参考推理（10秒）
+python export_test_img.py --normalize --quant-params quant_params.json
+python hw_ref.py \
+    --image ../hardware/src/v1.1/tb/test_image.mem \
+    --weights ../hardware/src/v1.1/rtl/weights \
+    --quant-params quant_params.json
 ```
 
-### 2. 训练SimpleMLP（推荐初学者）
-
-```bash
-# 快速训练（3个epoch，约1分钟）
-python train.py --model SimpleMLP --epochs 3
-
-# 完整训练（10个epoch，约3分钟）
-python train.py --model SimpleMLP --epochs 10
+**预期输出**：
 ```
-
-### 3. 导出模型到C代码
-
-```bash
-# 自动导出最新训练的模型
-python export.py --latest
-```
-
-生成的文件：`../software/app/model_weights.h`
-
-### 4. 在PC上测试推理
-
-```bash
-cd ../software/app
-gcc main.c -o mnist_test
-./mnist_test
+Conv1 q[0]: -22
+Pool1 q[0]: -22
+...
+Predicted: 7, Label: 7, Match: True
 ```
 
 ---
 
-## 进阶：训练TinyLeNet CNN
+## 📊 进阶：RTL 仿真验证
 
-TinyLeNet是为FPGA设计的轻量级CNN，准确率可达98%+
+### 单张图像仿真（30秒）
 
-### 1. 训练TinyLeNet
+```bash
+cd ../hardware/src/v1.1
+python script/run_sim.py --tb tb_mnist_network_core --no-wave
+```
+
+**预期**：RTL 输出与 Python 参考一致
+
+### 批量测试（快速验证 20 张）
 
 ```bash
 cd model_tools
-python train.py --model TinyLeNet --epochs 20
+python batch_sim.py \
+    --count 20 \
+    --normalize \
+    --quant-params quant_params.json \
+    --quiet
 ```
 
-训练约5-10分钟（GPU）或15-30分钟（CPU）
+**预期准确率**：20/20 = 100%
 
-### 2. 导出CNN模型
+---
+
+## 🚀 完整测试集评估（10,000 张）
+
+**警告**：需要数小时完成
 
 ```bash
-python export.py --latest --output ../software/app/tinylenet_weights.h
+python batch_sim.py \
+    --count 10000 \
+    --normalize \
+    --quant-params quant_params.json \
+    --quiet
 ```
 
-### 3. 实现FPGA加速器
-
-参考文档：`docs/TinyLeNet_fpga.md`
-
-需要实现：
-- Line Buffer（行缓存）
-- MAC Array（乘累加阵列）
-- Avalon-MM接口
+**预期准确率**：~98.71%
 
 ---
 
-## 常用命令速查
+## 🔌 上板验证（FPGA）
+
+### 1. 综合并下载
+
+1. 使用 Quartus 打开 `hardware/src/v1.1/rtl/mnist_system_top.v`
+2. 综合项目（约 5 分钟）
+3. 下载 `.sof` 到 FPGA
+
+### 2. 串口测试
 
 ```bash
-# 列出所有可用模型
-python train.py --list-models
+cd model_tools
+python send_image.py
+```
 
-# 训练指定模型
-python train.py --model <ModelName> --epochs <N>
-
-# 列出所有已训练模型
-python export.py --list
-
-# 导出指定模型
-python export.py --model-path trained_models/xxx.pth
-
-# 导出最新模型
-python export.py --latest
+**交互示例**：
+```
+1) MNIST image
+2) Custom file
+> 1
+Enter image index (0-9999): 42
+Sending image #42 (label: 3)...
+FPGA Response: Predicted: 3, Inference time: 10.031 ms
 ```
 
 ---
 
-## 新旧版本对比
+## 🛠️ 故障排查
 
-| 功能 | 旧版 (v1/train_export.py) | 新版 (train.py + export.py) |
-|------|------------------------|----------------------------|
-| 模型切换 | 需修改代码 | 命令行参数 --model |
-| 训练导出 | 耦合在一起 | 完全分离 |
-| 模型管理 | 覆盖式保存 | 保留所有版本 |
-| 扩展性 | 困难 | 模块化注册系统 |
+### 问题 1：量化参数不存在
 
----
+```bash
+# 解决：重新生成
+python calc_quant_params.py --normalize
+```
 
-## 故障排查
+### 问题 2：RTL 仿真结果不一致
 
-**Q: 提示找不到模型**
+```bash
+# 解决：重新生成所有文件
+python calc_quant_params.py --normalize
+python quantize_bias.py --quant-params quant_params.json --out-dir ../hardware/src/v1.1/rtl/weights
+python export_test_img.py --normalize --quant-params quant_params.json
+```
 
-A: 确保在 `model_tools/` 目录下运行命令
+### 问题 3：串口无响应
 
-**Q: 导出时提示没有模型**
-
-A: 先运行 `python train.py --model xxx` 训练模型
-
-**Q: 训练速度很慢**
-
-A:
-1. 增大batch-size：`--batch-size 2048`
-2. 使用GPU（自动检测CUDA）
-3. 减少epoch数
+**检查清单**：
+- [ ] FPGA 已下载 `.sof` 文件
+- [ ] 串口号正确（修改 `send_image.py` 中的 `SERIAL_PORT`）
+- [ ] 波特率为 115200
+- [ ] USB-UART 驱动已安装
 
 ---
 
-## 下一步学习
+## 📖 深入学习
 
-1. 阅读 `README_v3.md` 了解完整架构
-2. 阅读 `docs/TinyLeNet_fpga.md` 了解FPGA实现
-3. 尝试修改 `models/SimpleMLP.py` 创建自定义模型
-4. 查看 `logs/` 目录下的训练日志分析训练过程
+| 文档 | 内容 |
+|------|------|
+| [model_tools/README.md](README.md) | 完整工具链文档 |
+| [hardware/src/v1.1/README.md](../hardware/src/v1.1/README.md) | 硬件实现详解 |
+| [README.md](../README.md) | 项目总览 |
+| [README_v1.md](../README_v1.md) | Nios II 实现路线 |
 
 ---
 
-**祝你成功！如有问题，请参考 README_v3.md 完整文档。**
+## 🎯 常用命令速查
+
+```bash
+# ========== 量化与权重 ==========
+# 计算量化参数
+python calc_quant_params.py --normalize
+
+# 生成 INT32 偏置
+python quantize_bias.py --quant-params quant_params.json --out-dir ../hardware/src/v1.1/rtl/weights
+
+# 导出测试图像
+python export_test_img.py --normalize --quant-params quant_params.json
+
+# ========== 验证 ==========
+# Python 参考推理（单张）
+python hw_ref.py --image ../hardware/src/v1.1/tb/test_image.mem --weights ../hardware/src/v1.1/rtl/weights --quant-params quant_params.json
+
+# Python 参考推理（批量）
+python hw_ref.py --batch --count 200 --normalize --quant-params quant_params.json
+
+# RTL 仿真（单张）
+cd ../hardware/src/v1.1
+python script/run_sim.py --tb tb_mnist_network_core --no-wave
+
+# RTL 批量仿真
+cd model_tools
+python batch_sim.py --count 20 --normalize --quant-params quant_params.json --quiet
+
+# ========== 上板 ==========
+# 串口发送图像
+python send_image.py
+
+# ========== 可视化 ==========
+# 绘制训练曲线
+python train_log_plot.py
+```
+
+---
+
+## ⚙️ 高级选项
+
+### 调试 Mismatch
+
+```bash
+# 自动保存失败样本
+python batch_sim.py \
+    --count 20 \
+    --debug-mismatch \
+    --normalize \
+    --quant-params quant_params.json
+```
+
+生成文件位于 `batch_sim_debug/`：
+- `idx_<n>_sim.log` - RTL 仿真日志
+- `idx_<n>_hw_ref.log` - Python 参考日志
+- `idx_<n>_test_image.mem` - 失败样本
+
+### 加速仿真（不准确）
+
+```bash
+# FAST_SIM 模式（仅用于波形检查）
+python batch_sim.py --count 100 --fast --quiet
+```
+
+⚠️ **警告**：跳过真实计算，输出不准确！
+
+---
+
+**最后更新**：2026-01-04
+**版本**：v1.1 硬件加速器
+**状态**：✅ Completed

@@ -9,6 +9,8 @@
 版本状态: **Completed / Pure Verilog**
 说明: 主线为纯 Verilog 硬件加速器，Nios II 版本仅为早期测试。
 
+> 💡 **技术路线说明**：本项目早期尝试使用 Nios II 软核实现（v1），但因资源限制与性能瓶颈最终转向纯 Verilog 硬件加速方案（v1.1）。详见 [Nios II 实现路线详解（README_v1.md）](README_v1.md)
+
 ---
 
 ## 🎯 项目亮点
@@ -90,6 +92,7 @@
 ## 📚 快速入口
 - **硬件实现详细文档**: [hardware/src/v1.1/README.md](hardware/src/v1.1/README.md)
 - **Python 工具链**: [model_tools/README.md](model_tools/README.md)
+- **Nios II 技术路线说明** (Legacy): [README_v1.md](README_v1.md)
 
 ---
 
@@ -98,6 +101,7 @@
 ```
 FPGA_MNIST_Nios/
 ├── README.md                    # 本文件
+├── README_v1.md                 # Nios II 实现路线说明（Legacy）
 ├── model_tools/                 # Python 工具链
 │   ├── calc_quant_params.py    # 量化参数计算
 │   ├── quantize_bias.py        # 偏置量化
