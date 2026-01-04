@@ -51,3 +51,4 @@ __pycache__/
 *.vcd
 *.fst
 *.csv
+/report/
